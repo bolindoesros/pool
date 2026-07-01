@@ -1,0 +1,12 @@
+build/
+install/
+log/
+*.pyc
+__pycache__/
+*.egg-info/
+.colcon_install_layout
+*.csv
+
+# pixi environments
+.pixi/*
+!.pixi/config.toml

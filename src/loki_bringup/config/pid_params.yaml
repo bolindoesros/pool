@@ -1,0 +1,41 @@
+loki_controller:
+  ros__parameters:
+
+    max_pitch_cmd: 15.0   # (in deg, downward)
+    alpha:          0.7    
+
+    # ── Speed (PI) ────────────────────────────────────────────────────
+    speed:
+      kp:         1200.0
+      ki:          250.0
+      kd:            0.0
+      antiwindup:    1.6
+      output_max:  400.0
+      output_min: -400.0
+
+    # ── Yaw (PI) ──────────────────────────────────────────────────────
+    yaw:
+      kp:         30.0
+      ki:          5.0
+      kd:          0.0
+      antiwindup:  5.0
+      output_max:  400.0
+      output_min: -400.0
+
+    # ── Depth outer loop ──────────────────────────────────────────
+    depth:
+      kp:        100.0
+      ki:          1.0
+      kd:          0.0
+      antiwindup:  5.0
+      output_max:  15.0
+      output_min: -15.0
+
+    # ── Pitch inner loop ──────────────────────────────────────────
+    pitch:
+      kp:        150.0
+      ki:          0.0
+      kd:          0.0
+      antiwindup:  0.0
+      output_max:  400.0
+      output_min: -400.0

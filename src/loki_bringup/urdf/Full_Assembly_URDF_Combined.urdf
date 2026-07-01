@@ -1,0 +1,574 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="Full_Assembly_URDF_Combined">
+    <link name="world"/>
+  <joint name="world_to_base" type="fixed">
+    <parent link="world"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+<link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="0.78391 6.8773E-05 0.0017477"
+        rpy="0 0 0" />
+      <mass
+        value="50.608" />
+      <inertia
+        ixx="1.5208"
+        ixy="-0.00054244"
+        ixz="0.0035527"
+        iyy="1.2287"
+        iyz="-0.00034252"
+        izz="2.2027" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.79216 0.81961 0.93333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="imu_link"/>
+<joint name="imu_joint" type="fixed">
+  <parent link="base_link"/>
+  <child link="imu_link"/>
+  <origin xyz="0 0 0" rpy="0 0 0"/>
+</joint>
+
+<link name="mag_link"/>
+<joint name="mag_joint" type="fixed">
+  <parent link="base_link"/>
+  <child link="mag_link"/>
+  <origin xyz="0 0 0" rpy="0 0 0"/>
+</joint>
+  <link
+    name="dvl_link">
+    <inertial>
+      <origin
+        xyz="0.0049709057384924 -8.21692642729358E-10 -0.0061276595567091"
+        rpy="0 0 0" />
+      <mass
+        value="0.152864108890924" />
+      <inertia
+        ixx="0.000420880349267861"
+        ixy="1.34445582378551E-12"
+        ixz="-6.29275993865006E-09"
+        iyy="0.000323326269815129"
+        iyz="2.40831860015147E-14"
+        izz="0.000741959167739447" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/DVL_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/DVL_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="dvl_Joint"
+    type="fixed">
+    <origin
+      xyz="0.315 0 -0.12349"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="dvl_link" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="TopRudder1_Link">
+    <inertial>
+      <origin
+        xyz="0.11406342481885 5.3965112736809E-07 0.0451652793738003"
+        rpy="0 0 0" />
+      <mass
+        value="0.590786732498221" />
+      <inertia
+        ixx="0.000817314036554564"
+        ixy="-3.32339282259642E-09"
+        ixz="6.45683527810724E-05"
+        iyy="0.00309009037319869"
+        iyz="-1.81174806028622E-08"
+        izz="0.0023163369021697" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/TopRudder1_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/TopRudder1_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="TopRudder1_Joint"
+    type="revolute">
+    <origin
+      xyz="1.1616 -0.129 0.12538"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="TopRudder1_Link" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="-3.0543"
+      upper="3.0543"
+      effort="3.5"
+      velocity="3" />
+  </joint>
+  <link
+    name="TopRudder2_Link">
+    <inertial>
+      <origin
+        xyz="-0.347004375739745 -0.12893021407232 -0.124111472535882"
+        rpy="0 0 0" />
+      <mass
+        value="54.3097707966866" />
+      <inertia
+        ixx="1.85656067793216"
+        ixy="-0.00196638205157393"
+        ixz="-0.0463289624670748"
+        iyy="5.30793160673248"
+        iyz="-0.000357588777733674"
+        izz="6.34918261741631" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/TopRudder2_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/TopRudder2_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="TopRudder2_Joint"
+    type="revolute">
+    <origin
+      xyz="1.1616 0.129 0.12538"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="TopRudder2_Link" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="-3.0543"
+      upper="3.0543"
+      effort="3.5"
+      velocity="3" />
+  </joint>
+  <link
+    name="BottomRudder1_Link">
+    <inertial>
+      <origin
+        xyz="0.114063424818847 -5.39651127007268E-07 -0.0465424879815879"
+        rpy="0 0 0" />
+      <mass
+        value="0.590786732498232" />
+      <inertia
+        ixx="0.000817314036554592"
+        ixy="3.32339282189993E-09"
+        ixz="-6.45683527810827E-05"
+        iyy="0.00309009037319873"
+        iyz="-1.81174806008853E-08"
+        izz="0.00231633690216971" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/BottomRudder1_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/BottomRudder1_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="BottomRudder1_Joint"
+    type="revolute">
+    <origin
+      xyz="1.1616 -0.129 -0.124"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="BottomRudder1_Link" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-3.0543"
+      upper="3.0543"
+      effort="3.5"
+      velocity="3" />
+  </joint>
+  <link
+    name="BottomRudder2_Joint">
+    <inertial>
+      <origin
+        xyz="0.114063424818846 -5.39651127257068E-07 -0.0465424879815884"
+        rpy="0 0 0" />
+      <mass
+        value="0.590786732498239" />
+      <inertia
+        ixx="0.000817314036554593"
+        ixy="3.32339282441559E-09"
+        ixz="-6.45683527810989E-05"
+        iyy="0.00309009037319872"
+        iyz="-1.81174806014077E-08"
+        izz="0.0023163369021697" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/BottomRudder2_Joint.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/BottomRudder2_Joint.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="BottomRudder2_Joint"
+    type="revolute">
+    <origin
+      xyz="1.1616 0.129 -0.124"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="BottomRudder2_Joint" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-3.0543"
+      upper="3.0543"
+      effort="3.5"
+      velocity="3" />
+  </joint>
+  <link
+    name="Elevator1_Link">
+    <inertial>
+      <origin
+        xyz="0.116563424818847 -0.0451652793737996 5.39651127148258E-07"
+        rpy="0 0 0" />
+      <mass
+        value="0.590786732498239" />
+      <inertia
+        ixx="0.0008173140365546"
+        ixy="-6.45683527810796E-05"
+        ixz="-3.32339282760955E-09"
+        iyy="0.00231633690216975"
+        iyz="1.81174806006159E-08"
+        izz="0.00309009037319878" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/Elevator1_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/Elevator1_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Elevator1_Joint"
+    type="revolute">
+    <origin
+      xyz="1.1541 -0.29788 0"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="Elevator1_Link" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="-3.0543"
+      upper="3.0543"
+      effort="3.5"
+      velocity="3" />
+  </joint>
+  <link
+    name="Elevator2_Link">
+    <inertial>
+      <origin
+        xyz="0.116563424818846 0.0451652793737992 -5.3965112792912E-07"
+        rpy="0 0 0" />
+      <mass
+        value="0.590786732498255" />
+      <inertia
+        ixx="0.00081731403655464"
+        ixy="6.45683527811046E-05"
+        ixz="3.32339282568966E-09"
+        iyy="0.00231633690216979"
+        iyz="1.81174805984361E-08"
+        izz="0.00309009037319886" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/Elevator2_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/Elevator2_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Elevator2_Joint"
+    type="fixed">
+    <origin
+      xyz="1.1541 0.29788 0"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="Elevator2_Link" />
+    <axis
+      xyz="0 0 0" />
+    <limit
+      lower="-3.0543"
+      upper="3.0543"
+      effort="3.5"
+      velocity="3" />
+  </joint>
+  <link
+    name="Thruster1_Link">
+    <inertial>
+      <origin
+        xyz="-0.0490917696113775 0.00210022795946702 4.68754707284568E-07"
+        rpy="0 0 0" />
+      <mass
+        value="0.654254699059244" />
+      <inertia
+        ixx="0.00111306507280098"
+        ixy="-4.73549434643004E-05"
+        ixz="4.17660663947306E-09"
+        iyy="0.000897148027270713"
+        iyz="4.16508637924178E-08"
+        izz="0.000907054385661878" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/Thruster1_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/Thruster1_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Thruster1_Joint"
+    type="fixed">
+    <origin
+      xyz="1.444 -0.129 0"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="Thruster1_Link" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="Thruster2_Link">
+    <inertial>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <mass
+        value="0" />
+      <inertia
+        ixx="0"
+        ixy="0"
+        ixz="0"
+        iyy="0"
+        iyz="0"
+        izz="0" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/Thruster2_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://loki_description/meshes/Thruster2_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Thruster2_Joint"
+    type="fixed">
+    <origin
+      xyz="1.444 0.129 0"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="Thruster2_Link" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+</robot>
