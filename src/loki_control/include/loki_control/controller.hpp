@@ -33,7 +33,6 @@
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include "loki_control/pid.hpp"
-#include "loki_msgs/msg/loki_command.hpp"
 
 namespace loki
 {
@@ -51,7 +50,6 @@ private:
   void on_target_heading(const std_msgs::msg::Float64::SharedPtr msg);
   void on_target_speed(const std_msgs::msg::Float64::SharedPtr msg);
   void on_target_moving_mass(const std_msgs::msg::Float64::SharedPtr msg);
-  void on_loki_command(const loki_msgs::msg::LokiCommand::SharedPtr msg);
   void on_arm(
     const std_srvs::srv::SetBool::Request::SharedPtr req,
     const std_srvs::srv::SetBool::Response::SharedPtr res);
@@ -85,6 +83,7 @@ private:
 
   // ── Parameters ────────────────────────────────────────────
   double max_pitch_cmd_;
+  bool   odom_watchdog_enabled_ = true;
 
   // ── PID controllers ───────────────────────────────────────
   PID speed_pid_;
@@ -103,7 +102,6 @@ private:
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr      target_heading_sub_;
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr      target_speed_sub_;
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr      target_moving_mass_sub_;
-  rclcpp::Subscription<loki_msgs::msg::LokiCommand>::SharedPtr loki_command_sub_;
 
   // ── Publishers ────────────────────────────────────────────
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr   thruster_pub_;

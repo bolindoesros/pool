@@ -1,0 +1,9 @@
+# ESP32s — pinned by unique MAC-based serial (safe, always correct)
+SUBSYSTEM=="tty", ATTRS{serial}=="30:ED:A0:2A:CE:10", SYMLINK+="esp32_1", MODE="0666"
+SUBSYSTEM=="tty", ATTRS{serial}=="88:56:A6:57:F4:6C", SYMLINK+="esp32_2", MODE="0666"
+
+# VESCs — identical serials, so pinned by physical USB port instead
+# (2.1 and 2.2 are the two ESP32 JTAG-serial ports, not VESCs — the actual
+# VESC firmware (STM ChibiOS_RT Virtual COM Port) shows up on 2.3 / 2.4)
+SUBSYSTEM=="tty", ENV{ID_PATH}=="platform-3610000.usb-usb-0:2.3:1.0", SYMLINK+="vesc_1", MODE="0666"
+SUBSYSTEM=="tty", ENV{ID_PATH}=="platform-3610000.usb-usb-0:2.4:1.0", SYMLINK+="vesc_2", MODE="0666"

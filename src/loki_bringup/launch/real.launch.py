@@ -19,7 +19,7 @@ def generate_launch_description() -> LaunchDescription:
     vesc_params = os.path.join(config_dir, "config", "vesc_params.yaml")
     urdf_file   = os.path.join(config_dir, "urdf", "Full_Assembly_URDF_Combined.urdf")
 
-    robot_state_publisher = Node(
+    state_publisher = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
         name="robot_state_publisher",
@@ -79,26 +79,6 @@ def generate_launch_description() -> LaunchDescription:
         respawn_delay=2.0,
     )
 
-    vesc_driver_0 = Node(
-        package="loki_vesc",
-        executable="vesc_node",
-        name="vesc_driver_0",
-        namespace="vesc0",
-        output="screen",
-        parameters=[{
-            'port':               '/dev/ttyVESC0',
-            'baud':               115200,
-            'duty_cycle_max':     0.90,
-            'command_timeout_sec': 0.5,
-            'can_forward_id':     -1,
-            'max_current_a':      -1.0,
-            'max_rpm':            -1.0,
-        }],
-        remappings=[('vesc/commands/duty_cycle', '/vesc/commands/duty_cycle')],
-        respawn=True,
-        respawn_delay=2.0,
-    )
-
     vesc_driver_1 = Node(
         package="loki_vesc",
         executable="vesc_node",
@@ -106,15 +86,41 @@ def generate_launch_description() -> LaunchDescription:
         namespace="vesc1",
         output="screen",
         parameters=[{
-            'port':               '/dev/ttyVESC1',
+            'port':               '/dev/vesc_1',
             'baud':               115200,
             'duty_cycle_max':     0.90,
             'command_timeout_sec': 0.5,
             'can_forward_id':     -1,
-            'max_current_a':      -1.0,
-            'max_rpm':            -1.0,
+            'max_current_a':      25,
+            'max_rpm':            10000.0,
         }],
-        remappings=[('vesc/commands/duty_cycle', '/vesc/commands/duty_cycle')],
+        remappings=[
+            ('vesc/commands/duty_cycle', '/vesc/commands/duty_cycle'),
+            ('vesc/commands/current',    '/vesc/commands/current'),
+        ],
+        respawn=True,
+        respawn_delay=2.0,
+    )
+
+    vesc_driver_2 = Node(
+        package="loki_vesc",
+        executable="vesc_node",
+        name="vesc_driver_2",
+        namespace="vesc2",
+        output="screen",
+        parameters=[{
+            'port':               '/dev/vesc_2',
+            'baud':               115200,
+            'duty_cycle_max':     0.90,
+            'command_timeout_sec': 0.5,
+            'can_forward_id':     -1,
+            'max_current_a':      25,
+            'max_rpm':            10000.0,
+        }],
+        remappings=[
+            ('vesc/commands/duty_cycle', '/vesc/commands/duty_cycle'),
+            ('vesc/commands/current',    '/vesc/commands/current'),
+        ],
         respawn=True,
         respawn_delay=2.0,
     )
@@ -148,27 +154,16 @@ def generate_launch_description() -> LaunchDescription:
         respawn_delay=2.0,
     )
 
-    foxglove = Node(
-        package="foxglove_bridge",
-        executable="foxglove_bridge",
-        name="foxglove_bridge",
-        output="screen",
-        parameters=[{"port": 8765, "address": "0.0.0.0", "num_threads": 2}],
-        respawn=True,
-        respawn_delay=5.0,
-    )
-
     return LaunchDescription([
-        robot_state_publisher,
+        state_publisher,
         imu_node,
         madgwick,
         dvl_receiver,
         dvl_republisher,
         hw_bridge,
-        vesc_driver_0,
         vesc_driver_1,
+        vesc_driver_2,
         TimerAction(period=2.0, actions=[ekf_node]),
-        TimerAction(period=4.0, actions=[controller]),
+        # TimerAction(period=4.0, actions=[controller]),
         TimerAction(period=6.0, actions=[monitor]),
-        TimerAction(period=10.0, actions=[foxglove]),
     ])

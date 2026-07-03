@@ -13,7 +13,6 @@
   <depend>nav_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>tf2</depend>
-  <depend>loki_msgs</depend>
   <export>
     <build_type>ament_cmake</build_type>
   </export>

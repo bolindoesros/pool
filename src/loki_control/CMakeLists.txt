@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.10)
 project(loki_control)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -12,7 +12,6 @@ find_package(std_srvs     REQUIRED)
 find_package(nav_msgs     REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2          REQUIRED)
-find_package(loki_msgs    REQUIRED)
 
 add_library(pid_lib STATIC src/pid.cpp)
 target_include_directories(pid_lib PUBLIC
@@ -27,7 +26,7 @@ target_include_directories(loki_controller PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_link_libraries(loki_controller pid_lib)
 ament_target_dependencies(loki_controller
-  rclcpp std_msgs std_srvs nav_msgs geometry_msgs tf2 loki_msgs)
+  rclcpp std_msgs std_srvs nav_msgs geometry_msgs tf2)
 
 install(TARGETS loki_controller pid_lib
   DESTINATION lib/${PROJECT_NAME})

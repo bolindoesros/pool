@@ -4,14 +4,25 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float64, Bool
 
-COMM_SET_DUTY     = 0x05
 COMM_GET_VALUES   = 0x04
+COMM_SET_DUTY     = 0x05
+COMM_SET_CURRENT  = 0x06
+COMM_SET_RPM      = 0x08
 COMM_FORWARD_CAN  = 0x21
+
+# Fixed-point scale factors applied before packing each command as an int32.
+DUTY_SCALE    = 100000  # duty (-1..1)      -> VESC fixed-point
+CURRENT_SCALE = 1000    # amps              -> milliamps
+RPM_SCALE     = 1       # electrical RPM    -> already integer eRPM
 
 FAULT_NAMES = {
     0: 'NONE', 1: 'OVER_VOLTAGE', 2: 'UNDER_VOLTAGE', 3: 'DRV',
     4: 'ABS_OVER_CURRENT', 5: 'OVER_TEMP_FET', 6: 'OVER_TEMP_MOTOR',
 }
+
+
+def _clamp(value: float, limit: float) -> float:
+    return max(-limit, min(limit, value))
 
 
 def _crc16(data: bytes) -> int:
@@ -34,14 +45,14 @@ def _make_packet(payload: bytes) -> bytes:
     return header + payload + bytes([crc >> 8, crc & 0xFF, 0x03])
 
 
-def _duty_packet(duty: float) -> bytes:
-    duty_i = int(max(-1.0, min(1.0, duty)) * 100000)
-    return _make_packet(bytes([COMM_SET_DUTY]) + struct.pack('>i', duty_i))
-
-
-def _can_forward_duty_packet(can_id: int, duty: float) -> bytes:
-    duty_i = int(max(-1.0, min(1.0, duty)) * 100000)
-    payload = bytes([COMM_FORWARD_CAN, can_id & 0xFF, COMM_SET_DUTY]) + struct.pack('>i', duty_i)
+def _command_packet(cmd: int, value: float, scale: float, can_id: int = None) -> bytes:
+    """Build a SET_* command packet, optionally wrapped for CAN forwarding."""
+    value_i = int(value * scale)
+    body = struct.pack('>i', value_i)
+    if can_id is None:
+        payload = bytes([cmd]) + body
+    else:
+        payload = bytes([COMM_FORWARD_CAN, can_id & 0xFF, cmd]) + body
     return _make_packet(payload)
 
 
@@ -103,12 +114,14 @@ class VescNode(Node):
         can_fwd_id   = self.declare_parameter('can_forward_id',      -1).value
         max_current  = self.declare_parameter('max_current_a',       -1.0).value
         max_rpm      = self.declare_parameter('max_rpm',             -1.0).value
+        invert       = self.declare_parameter('invert',              False).value
 
-        self._max_dc      = float(max_dc)
+        self._max_dc      = min(float(max_dc), 1.0)
         self._timeout     = float(timeout)
         self._can_fwd_id  = int(can_fwd_id)
         self._max_current = float(max_current)
         self._max_rpm     = float(max_rpm)
+        self._invert      = bool(invert)
 
         try:
             self._ser = serial.Serial(port, baud, timeout=0.1)
@@ -121,8 +134,9 @@ class VescNode(Node):
         self._last_cmd = self.get_clock().now()
         self._got_cmd  = False
 
-        self.create_subscription(Float64, 'vesc/commands/duty_cycle',
-                                 self._on_duty, 10)
+        self.create_subscription(Float64, 'vesc/commands/duty_cycle', self._on_duty,    10)
+        self.create_subscription(Float64, 'vesc/commands/current',    self._on_current, 10)
+        self.create_subscription(Float64, 'vesc/commands/rpm',        self._on_rpm,     10)
 
         qos = rclpy.qos.QoSPresetProfiles.SENSOR_DATA.value
         self._pub_current_motor = self.create_publisher(Float64, 'vesc/telemetry/current_motor', qos)
@@ -136,17 +150,40 @@ class VescNode(Node):
         self.create_timer(0.1, self._watchdog)
         self.create_timer(1.0, self._request_telemetry)
 
-    def _on_duty(self, msg: Float64):
-        duty = max(-self._max_dc, min(self._max_dc, msg.data))
+    def _send_command(self, cmd: int, value: float, scale: float):
+        """Write a SET_* command (plus its CAN-forward twin, if configured) and
+        reset the command watchdog. `value` is in the node's own sign convention;
+        `invert` is applied here so callers never have to think about it."""
+        physical = -value if self._invert else value
         try:
-            self._ser.write(_duty_packet(duty))
+            self._ser.write(_command_packet(cmd, physical, scale))
             if self._can_fwd_id >= 0:
-                self._ser.write(_can_forward_duty_packet(self._can_fwd_id, duty))
+                self._ser.write(_command_packet(cmd, physical, scale, self._can_fwd_id))
         except serial.SerialException as e:
             self.get_logger().error(f'Serial write failed: {e}')
             return
         self._last_cmd = self.get_clock().now()
         self._got_cmd  = True
+
+    def _stop(self):
+        """Zero the thruster via duty=0, ignoring serial errors (best-effort)."""
+        try:
+            self._ser.write(_command_packet(COMM_SET_DUTY, 0.0, DUTY_SCALE))
+            if self._can_fwd_id >= 0:
+                self._ser.write(_command_packet(COMM_SET_DUTY, 0.0, DUTY_SCALE, self._can_fwd_id))
+        except serial.SerialException:
+            pass
+
+    def _on_duty(self, msg: Float64):
+        self._send_command(COMM_SET_DUTY, _clamp(msg.data, self._max_dc), DUTY_SCALE)
+
+    def _on_current(self, msg: Float64):
+        current = _clamp(msg.data, self._max_current) if self._max_current > 0 else msg.data
+        self._send_command(COMM_SET_CURRENT, current, CURRENT_SCALE)
+
+    def _on_rpm(self, msg: Float64):
+        erpm = _clamp(msg.data, self._max_rpm) if self._max_rpm > 0 else msg.data
+        self._send_command(COMM_SET_RPM, erpm, RPM_SCALE)
 
     def _pub_f64(self, pub, value: float):
         msg = Float64()
@@ -164,6 +201,10 @@ class VescNode(Node):
             if v is None:
                 self.get_logger().warn('Could not parse VESC values response')
                 return
+
+            if self._invert:
+                for key in ('current_motor', 'current_in', 'rpm', 'duty_now'):
+                    v[key] = -v[key]
 
             self._pub_f64(self._pub_current_motor, v['current_motor'])
             self._pub_f64(self._pub_current_in,    v['current_in'])
@@ -192,9 +233,7 @@ class VescNode(Node):
                     f'RPM {v["rpm"]:.0f} exceeds max {self._max_rpm:.0f} — zeroing thruster')
                 tripped = True
             if tripped:
-                self._ser.write(_duty_packet(0.0))
-                if self._can_fwd_id >= 0:
-                    self._ser.write(_can_forward_duty_packet(self._can_fwd_id, 0.0))
+                self._stop()
                 self._got_cmd = False
         except serial.SerialException as e:
             self.get_logger().error(f'Telemetry read error: {e}')
@@ -204,20 +243,13 @@ class VescNode(Node):
             return
         age = (self.get_clock().now() - self._last_cmd).nanoseconds * 1e-9
         if age > self._timeout:
-            self.get_logger().warn(f'No duty command for {age:.2f}s — zeroing thruster')
-            try:
-                self._ser.write(_duty_packet(0.0))
-                if self._can_fwd_id >= 0:
-                    self._ser.write(_can_forward_duty_packet(self._can_fwd_id, 0.0))
-            except serial.SerialException:
-                pass
+            self.get_logger().warn(f'No command for {age:.2f}s — zeroing thruster')
+            self._stop()
             self._got_cmd = False
 
     def destroy_node(self):
         try:
-            self._ser.write(_duty_packet(0.0))
-            if self._can_fwd_id >= 0:
-                self._ser.write(_can_forward_duty_packet(self._can_fwd_id, 0.0))
+            self._stop()
             self._ser.close()
         except Exception:
             pass

@@ -1,6 +1,6 @@
 [workspace]
 name = "loki_ws_copy"
-channels = ["https://prefix.dev/robostack-jazzy", "https://prefix.dev/conda-forge"]
+channels = ["robostack-jazzy", "conda-forge"]
 platforms = ["linux-aarch64"]
 
 [dependencies]
@@ -9,7 +9,7 @@ ros-jazzy-ros-base = "*"
 pkg-config = "*"
 compilers = "*"
 make = "*"
-ninja = "*"
+ninja = ">=1.13.2,<2"
 ros-jazzy-ros2cli = "*"
 
 # Build tools
@@ -38,18 +38,21 @@ ros-jazzy-tf2 = "*"
 ros-jazzy-tf2-ros = "*"
 
 [pypi-dependencies]
-
-
-# The following packages were not found:
-# ament_python = "*"
-# ros_tcp_endpoint = "*"
+pio = "*"
 
 [tasks]
 build = {cmd = "colcon build --symlink-install", description = "Build the ROS workspace"}
 clean = {cmd = "rm -rf build install log", description = "Clean build artifacts (build, install, log directories)"}
+
+start = {cmd = "scripts/start_agent.sh"}
+stop = {cmd = "scripts/stop_agent.sh"}
+
 main = {cmd = "ros2 launch loki_bringup real.launch.py", description = "Launch the main ROS node"}
+manual = {cmd = "ros2 run loki_bringup manual.py", description = "Launch the manual control node"}
+swim = {cmd = "ros2 run loki_bringup manual2.py", description = "Launch the manual control node"}
+foxglove = {cmd = "ros2 launch foxglove_bridge foxglove_bridge_launch.xml", description = "Foxglove"}
+arm = {cmd = "ros2 service call /system/arm std_srvs/srv/SetBool \"{data: true}\"", description = "Arm the system"}
 
 # Scripts to source on environment activation, found after first colcon build.
-
 [activation]
 scripts = ["install/setup.bash"]

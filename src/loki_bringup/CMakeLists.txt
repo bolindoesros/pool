@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.10)
 project(loki_bringup)
 
 find_package(ament_cmake REQUIRED)
@@ -13,6 +13,8 @@ install(PROGRAMS
   scripts/servo_test.py
   scripts/circle_test.py
   scripts/box_test.py
+  scripts/manual.py
+  scripts/manual2.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

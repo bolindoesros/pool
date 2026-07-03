@@ -9,6 +9,10 @@ Publishes directly to /cmd/thruster, /cmd/elevator, /cmd/rudder.
   SPACE            all neutral (1500)
   + / -            change step size
   Q or Ctrl-C      quit (all neutral first)
+
+Output values are ramped toward the target each publish tick (like
+turtlebot3's make_simple_profile) instead of jumping instantly, to
+avoid sudden PWM discontinuities that cause thruster stutter.
 """
 import sys
 import tty
@@ -38,16 +42,24 @@ def _getch():
 
 class ManualControl(Node):
     def __init__(self):
-        super().__init__('manual_control')
+        super().__init__('manual')
         qos = 10
         self._pub_thrust = self.create_publisher(Int32, '/cmd/thruster', qos)
         self._pub_elev   = self.create_publisher(Int32, '/cmd/elevator', qos)
         self._pub_rudd   = self.create_publisher(Int32, '/cmd/rudder',   qos)
 
+        # target = what key presses set instantly (the goal)
+        self._target_thrust = NEUTRAL
+        self._target_elev   = NEUTRAL
+        self._target_rudd   = NEUTRAL
+
+        # control = what actually gets published, ramped smoothly toward target
         self._thrust = NEUTRAL
         self._elev   = NEUTRAL
         self._rudd   = NEUTRAL
+
         self._step   = 50
+        self._slop   = 15   # max PWM change per publish tick (tune to taste)
         self._running = True
 
         # Keep-alive: republish at 10 Hz so the VESC watchdog never fires
@@ -56,10 +68,23 @@ class ManualControl(Node):
     def _clamp(self, v):
         return max(MIN_PWM, min(MAX_PWM, v))
 
+    def _ramp(self, current, target):
+        if target > current:
+            return min(target, current + self._slop)
+        elif target < current:
+            return max(target, current - self._slop)
+        return current
+
     def _pub_i32(self, pub, val):
         m = Int32(); m.data = val; pub.publish(m)
 
     def _send_all(self):
+        # ramp control values toward target every tick, regardless of
+        # whether a key was just pressed
+        self._thrust = self._ramp(self._thrust, self._target_thrust)
+        self._elev   = self._ramp(self._elev,   self._target_elev)
+        self._rudd   = self._ramp(self._rudd,   self._target_rudd)
+
         self._pub_i32(self._pub_thrust, self._thrust)
         self._pub_i32(self._pub_elev,   self._elev)
         self._pub_i32(self._pub_rudd,   self._rudd)
@@ -69,9 +94,9 @@ class ManualControl(Node):
         bar_e = self._bar(self._elev)
         bar_r = self._bar(self._rudd)
         print(f"\r\033[K"
-              f"Thrust {bar_t} {self._thrust:4d}  "
-              f"Elev {bar_e} {self._elev:4d}  "
-              f"Rudd {bar_r} {self._rudd:4d}  "
+              f"Thrust {bar_t} {self._thrust:4d} (tgt {self._target_thrust:4d})  "
+              f"Elev {bar_e} {self._elev:4d} (tgt {self._target_elev:4d})  "
+              f"Rudd {bar_r} {self._rudd:4d} (tgt {self._target_rudd:4d})  "
               f"step={self._step}  "
               f"[arrows=thrust/rudd  W/S=elev  SPACE=neutral  +/-=step  Q=quit]",
               end='', flush=True)
@@ -79,7 +104,6 @@ class ManualControl(Node):
     def _bar(self, pwm):
         pos = int((pwm - NEUTRAL) / (MAX_PWM - NEUTRAL) * 5)
         bar = ['─'] * 11
-        bar[5] = '|'
         bar[5 + pos] = '█'
         return ''.join(bar)
 
@@ -90,6 +114,10 @@ class ManualControl(Node):
             ch = _getch()
 
             if ch in (b'q', b'Q', b'\x03'):
+                # force immediate stop, don't wait for ramp
+                self._target_thrust = NEUTRAL
+                self._target_elev   = NEUTRAL
+                self._target_rudd   = NEUTRAL
                 self._thrust = NEUTRAL
                 self._elev   = NEUTRAL
                 self._rudd   = NEUTRAL
@@ -97,21 +125,21 @@ class ManualControl(Node):
                 self._running = False
                 break
             elif ch == b' ':
-                self._thrust = NEUTRAL
-                self._elev   = NEUTRAL
-                self._rudd   = NEUTRAL
+                self._target_thrust = NEUTRAL
+                self._target_elev   = NEUTRAL
+                self._target_rudd   = NEUTRAL
             elif ch == b'\x1b[A':   # UP
-                self._thrust = self._clamp(self._thrust + self._step)
+                self._target_thrust = self._clamp(self._target_thrust + self._step)
             elif ch == b'\x1b[B':   # DOWN
-                self._thrust = self._clamp(self._thrust - self._step)
+                self._target_thrust = self._clamp(self._target_thrust - self._step)
             elif ch == b'\x1b[C':   # RIGHT
-                self._rudd = self._clamp(self._rudd + self._step)
+                self._target_rudd = self._clamp(self._target_rudd + self._step)
             elif ch == b'\x1b[D':   # LEFT
-                self._rudd = self._clamp(self._rudd - self._step)
+                self._target_rudd = self._clamp(self._target_rudd - self._step)
             elif ch in (b'w', b'W'):
-                self._elev = self._clamp(self._elev + self._step)
+                self._target_elev = self._clamp(self._target_elev + self._step)
             elif ch in (b's', b'S'):
-                self._elev = self._clamp(self._elev - self._step)
+                self._target_elev = self._clamp(self._target_elev - self._step)
             elif ch in (b'+', b'='):
                 self._step = min(200, self._step + 10)
             elif ch in (b'-', b'_'):

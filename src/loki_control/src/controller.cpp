@@ -4,7 +4,6 @@
  */
 
 #include "loki_control/controller.hpp"
-#include "loki_msgs/msg/loki_command.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -16,12 +15,14 @@ namespace loki
 static constexpr int    OUTER_LOOP_MS    = 40;   // 25Hz — depth PID (outer cascade)
 static constexpr int    INNER_LOOP_MS    = 10;   // 100Hz — pitch, speed, yaw PIDs (inner cascade)
 static constexpr double MAX_MOVING_MASS  = 0.2;  // m — physical travel limit of moving mass stepper (20 cm)
+static constexpr double ODOM_TIMEOUT_S   = 0.5;  // s — odometry older than this is considered stale
 
 ControllerNode::ControllerNode()
 : Node("loki_controller")
 {
-  max_pitch_cmd_ = declare_parameter("max_pitch_cmd", 20.0);
-  double alpha   = declare_parameter("alpha",          0.7);
+  max_pitch_cmd_          = declare_parameter("max_pitch_cmd", 20.0);
+  double alpha            = declare_parameter("alpha",          0.7);
+  odom_watchdog_enabled_  = declare_parameter("odom_watchdog_enabled", true);
 
   // load PID params
   speed_pid_.update_params(load_pid("speed", alpha));
@@ -37,7 +38,6 @@ ControllerNode::ControllerNode()
   target_heading_sub_     = create_subscription<std_msgs::msg::Float64>("/target/heading", qos, std::bind(&ControllerNode::on_target_heading, this, std::placeholders::_1));
   target_speed_sub_       = create_subscription<std_msgs::msg::Float64>("/target/speed", qos, std::bind(&ControllerNode::on_target_speed, this, std::placeholders::_1));
   target_moving_mass_sub_ = create_subscription<std_msgs::msg::Float64>("/target/moving_mass", qos, std::bind(&ControllerNode::on_target_moving_mass, this, std::placeholders::_1));
-  loki_command_sub_       = create_subscription<loki_msgs::msg::LokiCommand>("/loki/command", qos, std::bind(&ControllerNode::on_loki_command, this, std::placeholders::_1));
 
   // ── Actuator publishers ────────────────────────────────────
   thruster_pub_    = create_publisher<std_msgs::msg::Int32>  ("/cmd/thruster",     qos);
@@ -99,14 +99,6 @@ void ControllerNode::on_target_speed(const std_msgs::msg::Float64::SharedPtr msg
 void ControllerNode::on_target_moving_mass(const std_msgs::msg::Float64::SharedPtr msg){
   // Clamp to [0, MAX_MOVING_MASS] (physical limits)
   target_moving_mass_ = std::clamp(msg->data, 0.0, MAX_MOVING_MASS);
-}
-
-void ControllerNode::on_loki_command(const loki_msgs::msg::LokiCommand::SharedPtr msg) {
-  target_depth_       = msg->target_depth;
-  target_speed_       = msg->target_speed;
-  target_moving_mass_ = std::clamp(msg->target_moving_mass, 0.0, MAX_MOVING_MASS);
-  speed_unlocked_     = (msg->target_speed != 0.0);
-  if (!speed_unlocked_) speed_pid_.reset_controller();
 }
 
 // arm service callback
@@ -188,9 +180,9 @@ void ControllerNode::outer_loop()
   double dt = std::clamp((t - last_time_outer_).seconds(), 1e-4, 0.1);
   last_time_outer_ = t;
 
-  // Odom watchdog: if no odometry for > 500 ms, suppress control
+  // Odom watchdog: if no odometry for > ODOM_TIMEOUT_S, suppress control
   double odom_age = (now() - last_odom_time_).seconds();
-  if (odom_age > 0.5) {
+  if (odom_watchdog_enabled_ && odom_age > ODOM_TIMEOUT_S) {
     RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000,
       "No odometry for %.2fs — suppressing control output", odom_age);
     if (is_armed_) return;
@@ -220,6 +212,23 @@ void ControllerNode::inner_loop()
 
   // When disarmed, don't publish — allows manual cmd topic overrides during testing
   if (!is_armed_) return;
+
+  // Odom watchdog: without fresh odometry, desired_pitch_/current_pitch_ are frozen,
+  // so the PIDs would just wind up against a stale error forever. Hold neutral instead.
+  double odom_age = (now() - last_odom_time_).seconds();
+  if (odom_watchdog_enabled_ && odom_age > ODOM_TIMEOUT_S) {
+    auto t_msg = std_msgs::msg::Int32(); t_msg.data = 1500;
+    auto e_msg = std_msgs::msg::Int32(); e_msg.data = 1500;
+    auto r_msg = std_msgs::msg::Int32(); r_msg.data = 1500;
+    thruster_pub_->publish(t_msg);
+    elevator_pub_->publish(e_msg);
+    rudder_pub_->publish(r_msg);
+
+    speed_pid_.reset_controller();
+    yaw_pid_.reset_controller();
+    pitch_pid_.reset_controller();
+    return;
+  }
 
   // ── 2. Speed loop ──────────────────────────────────────────
   // Thruster is locked at neutral until a non-zero speed is explicitly published.
