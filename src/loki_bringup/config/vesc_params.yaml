@@ -1,0 +1,29 @@
+# Per-thruster VESC driver configuration — the single source of truth used by
+# both real.launch.py and the pixi bench tasks (vesc1 / vesc2).
+#
+# The /**/ wildcard matches the node in any namespace, so the same file works
+# for the launch (namespaced /vesc1, /vesc2) and standalone bench runs.
+#
+# invert: flips command AND telemetry sign for that thruster. The two props
+# are counter-rotating; if "forward" drives the vehicle backward, flip the
+# invert on ONE side only.
+
+/**/vesc_driver_1:
+  ros__parameters:
+    port: /dev/vesc_1
+    baud: 115200
+    duty_cycle_max: 0.9
+    command_timeout_sec: 0.5
+    max_current_a: 25.0
+    max_rpm: 10000.0
+    invert: true
+
+/**/vesc_driver_2:
+  ros__parameters:
+    port: /dev/vesc_2
+    baud: 115200
+    duty_cycle_max: 0.9
+    command_timeout_sec: 0.5
+    max_current_a: 25.0
+    max_rpm: 10000.0
+    invert: false   # spun opposite to thruster 1 in the 2026-07-03 bench test

@@ -53,6 +53,11 @@ swim = {cmd = "ros2 run loki_bringup manual2.py", description = "Launch the manu
 foxglove = {cmd = "ros2 launch foxglove_bridge foxglove_bridge_launch.xml", description = "Foxglove"}
 arm = {cmd = "ros2 service call /system/arm std_srvs/srv/SetBool \"{data: true}\"", description = "Arm the system"}
 
+vesc-ps = {cmd = "scripts/vesc_ps.sh", description = "List vesc_node processes, their serial ports, and stale handles"}
+vesc-kill = {cmd = "scripts/vesc_ps.sh --kill", description = "Stop all vesc_node processes (SIGINT first, thruster zeroed)"}
+vesc1 = {cmd = "ros2 run loki_vesc vesc_node --ros-args -r __node:=vesc_driver_1 --params-file src/loki_bringup/config/vesc_params.yaml", description = "Run VESC driver for thruster 1 (bench test, config from vesc_params.yaml)"}
+vesc2 = {cmd = "ros2 run loki_vesc vesc_node --ros-args -r __node:=vesc_driver_2 --params-file src/loki_bringup/config/vesc_params.yaml", description = "Run VESC driver for thruster 2 (bench test, config from vesc_params.yaml)"}
+
 # Scripts to source on environment activation, found after first colcon build.
 [activation]
 scripts = ["install/setup.bash"]

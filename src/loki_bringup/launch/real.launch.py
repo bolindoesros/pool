@@ -85,15 +85,7 @@ def generate_launch_description() -> LaunchDescription:
         name="vesc_driver_1",
         namespace="vesc1",
         output="screen",
-        parameters=[{
-            'port':               '/dev/vesc_1',
-            'baud':               115200,
-            'duty_cycle_max':     0.90,
-            'command_timeout_sec': 0.5,
-            'can_forward_id':     -1,
-            'max_current_a':      25,
-            'max_rpm':            10000.0,
-        }],
+        parameters=[vesc_params],
         remappings=[
             ('vesc/commands/duty_cycle', '/vesc/commands/duty_cycle'),
             ('vesc/commands/current',    '/vesc/commands/current'),
@@ -108,15 +100,7 @@ def generate_launch_description() -> LaunchDescription:
         name="vesc_driver_2",
         namespace="vesc2",
         output="screen",
-        parameters=[{
-            'port':               '/dev/vesc_2',
-            'baud':               115200,
-            'duty_cycle_max':     0.90,
-            'command_timeout_sec': 0.5,
-            'can_forward_id':     -1,
-            'max_current_a':      25,
-            'max_rpm':            10000.0,
-        }],
+        parameters=[vesc_params],
         remappings=[
             ('vesc/commands/duty_cycle', '/vesc/commands/duty_cycle'),
             ('vesc/commands/current',    '/vesc/commands/current'),

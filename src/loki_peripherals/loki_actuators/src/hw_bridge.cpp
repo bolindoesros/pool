@@ -1,3 +1,13 @@
+/**
+ * @file hw_bridge.cpp
+ * @brief Bridge from the /cmd topics to the actuators.
+ *
+ * Sub: /cmd/thruster (PWM µs), /cmd/elevator, /cmd/rudder, /cmd/moving_mass,
+ *      /system/arm_state
+ * Pub: /vesc/commands/duty_cycle (thruster), /pc_to_esp_cmd (fins + mass, 20 Hz)
+ *
+ * Disarmed (the default): fins neutral, mass zero, thruster duty 0.
+ */
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include <std_msgs/msg/float64.hpp>

@@ -110,7 +110,8 @@ class ManualControl2(Node):
         self._seq += 1
         elev = int(self._elev)
         rudd = int(self._rudd)
-        pkt.pwm = [3000 - elev, elev, rudd, rudd]
+        # Mirroring of servo pairs is handled in the ESP32 firmware.
+        pkt.pwm = [elev, elev, rudd, rudd]
         pkt.mass_target_revs = 0
         self._pub_esp.publish(pkt)
 
