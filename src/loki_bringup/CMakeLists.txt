@@ -13,8 +13,6 @@ install(PROGRAMS
   scripts/servo_test.py
   scripts/circle_test.py
   scripts/box_test.py
-  scripts/manual.py
-  scripts/manual2.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

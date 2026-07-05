@@ -45,10 +45,11 @@ start = {cmd = "scripts/start_agent.sh"}
 stop = {cmd = "scripts/stop_agent.sh"}
 
 main = {cmd = "ros2 launch loki_bringup real.launch.py", description = "Launch the main ROS node"}
-manual = {cmd = "ros2 run loki_bringup manual.py", description = "Launch the manual control node"}
-swim = {cmd = "ros2 run loki_bringup manual2.py", description = "Launch the manual control node"}
 foxglove = {cmd = "ros2 launch foxglove_bridge foxglove_bridge_launch.xml", description = "Foxglove"}
 arm = {cmd = "ros2 service call /system/arm std_srvs/srv/SetBool \"{data: true}\"", description = "Arm the system"}
+
+
+hw = {cmd = "ros2 launch loki_bringup hw.launch.py", description = "Launch the hardware bridge"}
 
 vesc-ps = {cmd = "scripts/vesc_ps.sh", description = "List vesc_node processes, their serial ports, and stale handles"}
 vesc-kill = {cmd = "scripts/vesc_ps.sh --kill", description = "Stop all vesc_node processes (SIGINT first, thruster zeroed)"}
