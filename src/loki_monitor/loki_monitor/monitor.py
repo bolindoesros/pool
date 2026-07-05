@@ -11,6 +11,9 @@ from nav_msgs.msg import Odometry, Path
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Bool, Float64, Int32
 
+PATH_MAX_POSES   = 2000  # cap trail length so paths don't grow unbounded
+PATH_PUBLISH_SEC = 1.0   # republish full paths at 1 Hz, not per odom tick
+
 class MonitorNode(Node):
 
     def __init__(self) -> None:
@@ -41,6 +44,7 @@ class MonitorNode(Node):
         self._gt_path.header.frame_id  = "odom"
         self._pub["path_ekf"] = self.create_publisher(Path, "/path/ekf",          10)
         self._pub["path_gt"]  = self.create_publisher(Path, "/path/ground_truth", 10)
+        self.create_timer(PATH_PUBLISH_SEC, self._publish_paths)
 
         # vehicle state
         self.create_subscription(Odometry, "/odometry/filtered",  self._on_odom,        qos)
@@ -66,16 +70,25 @@ class MonitorNode(Node):
         pose.header = msg.header
         pose.pose   = msg.pose.pose
         self._ekf_path.header.stamp = msg.header.stamp
-        self._ekf_path.poses.append(pose)
-        self._pub["path_ekf"].publish(self._ekf_path)
+        self._append_capped(self._ekf_path, pose)
 
     def _on_gt_odom(self, msg: Odometry) -> None:
         pose = PoseStamped()
         pose.header = msg.header
         pose.pose   = msg.pose.pose
         self._gt_path.header.stamp = msg.header.stamp
-        self._gt_path.poses.append(pose)
-        self._pub["path_gt"].publish(self._gt_path)
+        self._append_capped(self._gt_path, pose)
+
+    def _append_capped(self, path: Path, pose: PoseStamped) -> None:
+        path.poses.append(pose)
+        if len(path.poses) > PATH_MAX_POSES:
+            del path.poses[: len(path.poses) - PATH_MAX_POSES]
+
+    def _publish_paths(self) -> None:
+        if self._ekf_path.poses:
+            self._pub["path_ekf"].publish(self._ekf_path)
+        if self._gt_path.poses:
+            self._pub["path_gt"].publish(self._gt_path)
 
     def _publish_orientation(self, roll: float, pitch: float, yaw: float) -> None:
         # roll, pitch, yaw are in radians, convert to degrees for monitoring

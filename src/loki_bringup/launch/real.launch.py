@@ -19,12 +19,15 @@ def generate_launch_description() -> LaunchDescription:
     vesc_params = os.path.join(config_dir, "config", "vesc_params.yaml")
     urdf_file   = os.path.join(config_dir, "urdf", "Full_Assembly_URDF_Combined.urdf")
 
+    with open(urdf_file) as f:
+        robot_description = f.read()
+
     state_publisher = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
         name="robot_state_publisher",
         output="screen",
-        arguments=[urdf_file],
+        parameters=[{"robot_description": robot_description}],
         respawn=True,
         respawn_delay=2.0,
     )

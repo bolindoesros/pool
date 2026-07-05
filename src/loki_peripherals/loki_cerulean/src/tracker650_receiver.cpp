@@ -1,3 +1,4 @@
+#include <cstring>
 #include <memory>
 #include <string>
 #include "tracker650_ros_driver/tracker650_receiver.hpp"

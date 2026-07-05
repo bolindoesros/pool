@@ -7,7 +7,7 @@ cd "$BAG_DIR"
 
 BAG_NAME="auv_bag_$(date +%Y%m%d_%H%M%S)"
 
-echo "Recording AUV bag: $BAG_DIR/$BAG_NAME"
+echo "Recording ROS Bag: $BAG_DIR/$BAG_NAME"
 echo "Press Ctrl+C to stop recording."
 
 ros2 bag record -o "$BAG_NAME" \
@@ -15,7 +15,6 @@ ros2 bag record -o "$BAG_NAME" \
   /imu/data_raw \
   /imu/mag \
   /imu/data \
-  /pressure/raw \
   /dvl/twist_stamped \
   /odometry/filtered \
   /tf \

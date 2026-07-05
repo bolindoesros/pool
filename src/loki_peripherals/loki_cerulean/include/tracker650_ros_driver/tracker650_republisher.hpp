@@ -1,17 +1,10 @@
 #include "tracker650_ros_driver/tracker650_parser.hpp"
 
-#include "rclcpp/rclcpp.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 
-#include <iostream>
-#include <sstream> 
 #include <string>
-
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
 
 class Tracker650Republisher : public rclcpp::Node
 {

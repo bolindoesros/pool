@@ -11,8 +11,6 @@ environments:
     channels:
     - url: https://conda.anaconda.org/robostack-jazzy/
     - url: https://conda.anaconda.org/conda-forge/
-    indexes:
-    - https://pypi.org/simple
     packages:
       linux-aarch64:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/_openmp_mutex-4.5-20_gnu.conda
@@ -488,7 +486,6 @@ environments:
       - conda: https://conda.anaconda.org/robostack-jazzy/linux-aarch64/ros-jazzy-yaml-cpp-vendor-9.0.1-np2py312h61f2ce4_18.conda
       - conda: https://conda.anaconda.org/robostack-jazzy/linux-aarch64/ros-jazzy-zstd-vendor-0.26.10-np2py312h61f2ce4_18.conda
       - conda: https://conda.anaconda.org/robostack-jazzy/linux-aarch64/ros2-distro-mutex-0.15.0-jazzy_18.conda
-      - pypi: https://files.pythonhosted.org/packages/c5/9a/14fc0c3d823bd907b5e058ed5d0f6b394c686e501f5b9854e8b12c66d7b2/pio-0.0.3-py3-none-any.whl
 packages:
 - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/_openmp_mutex-4.5-20_gnu.conda
   build_number: 20
@@ -8494,7 +8491,3 @@ packages:
   license: BSD-3-Clause
   size: 2367
   timestamp: 1782298961415
-- pypi: https://files.pythonhosted.org/packages/c5/9a/14fc0c3d823bd907b5e058ed5d0f6b394c686e501f5b9854e8b12c66d7b2/pio-0.0.3-py3-none-any.whl
-  name: pio
-  version: 0.0.3
-  sha256: 8ca8a115a13fd8717e72a89c156a8d92cca79b095277b67ce1d61b24ec67a557

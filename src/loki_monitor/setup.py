@@ -20,7 +20,6 @@ setup(
     entry_points={
         'console_scripts': [
             'monitor = loki_monitor.monitor:main',
-            'step_logger = loki_monitor.step_logger:main',
         ],
     },
 )

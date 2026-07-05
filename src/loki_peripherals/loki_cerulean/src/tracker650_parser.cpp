@@ -2,11 +2,6 @@
 #include <sstream>
 #include <exception>
 
-const char* Tracker650Parser::lastStatus() const
-{
-    return last_status_;
-}
-
 std::vector<std::string> Tracker650Parser::split(const std::string& line, char delimiter)
 {
     std::vector<std::string> fields;
@@ -17,23 +12,27 @@ std::vector<std::string> Tracker650Parser::split(const std::string& line, char d
     return fields;
 }
 
-std::string Tracker650Parser::formatStdoff(const std::string& field)
+const char* Tracker650Parser::resultName(Result r)
 {
-    size_t star_pos = field.find('*');
-    if (star_pos != std::string::npos)
-        return field.substr(0, star_pos);
-    return field;
+    switch (r) {
+        case Result::OK:              return "OK";
+        case Result::NOT_DVPDX:       return "NOT_DVPDX";
+        case Result::MALFORMED:       return "MALFORMED";
+        case Result::ZERO_CONFIDENCE: return "ZERO_CONFIDENCE";
+        case Result::BAD_DT:          return "BAD_DT";
+    }
+    return "UNKNOWN";
 }
 
-bool Tracker650Parser::parseDVPDX(const std::string& line, DvlVelocity& out)
+Tracker650Parser::Result Tracker650Parser::parseDVPDX(const std::string& line, DvlVelocity& out)
 {
     auto fields = split(line, ',');
 
     if (fields.empty() || fields[0] != "$DVPDX")
-        return false;
+        return Result::NOT_DVPDX;
 
     if (fields.size() < 14)
-        return false;
+        return Result::MALFORMED;
 
     try {
         double tu  = std::stod(fields[1]);
@@ -44,20 +43,20 @@ bool Tracker650Parser::parseDVPDX(const std::string& line, DvlVelocity& out)
         int confidence = std::stoi(fields[9]);
 
         if (confidence == 0)
-            return false;
+            return Result::ZERO_CONFIDENCE;
 
         double dt_sec = dtu / 1e6;
         if (dt_sec <= 0.0)
-            return false;
+            return Result::BAD_DT;
 
         out.time       = tu / 1e6;
         out.vx         = pdx / dt_sec;
         out.vy         = pdy / dt_sec;
         out.vz         = pdz / dt_sec;
         out.confidence = confidence;
-        return true;
+        return Result::OK;
     }
     catch (const std::exception&) {
-        return false;
+        return Result::MALFORMED;
     }
 }

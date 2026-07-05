@@ -37,9 +37,6 @@ ros-jazzy-std-srvs = "*"
 ros-jazzy-tf2 = "*"
 ros-jazzy-tf2-ros = "*"
 
-[pypi-dependencies]
-pio = "*"
-
 [tasks]
 build = {cmd = "colcon build --symlink-install", description = "Build the ROS workspace"}
 clean = {cmd = "rm -rf build install log", description = "Clean build artifacts (build, install, log directories)"}

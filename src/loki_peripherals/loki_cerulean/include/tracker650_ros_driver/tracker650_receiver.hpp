@@ -22,8 +22,11 @@ public:
 
     ~Tracker650Receiver()
     {
-        if (sockfd_ >= 0) close(sockfd_);
+        // Join first: the loop exits within one 200 ms recv timeout once
+        // rclcpp::ok() is false. Closing the fd while recvfrom still uses it
+        // would be a use-after-close.
         if (recv_thread_.joinable()) recv_thread_.join();
+        if (sockfd_ >= 0) close(sockfd_);
     }
 
 private:

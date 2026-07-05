@@ -8,15 +8,24 @@ void Tracker650Republisher::rawDvlCallBack(const std_msgs::msg::String::SharedPt
   if (msg->data.rfind("$DVPDX", 0) != 0) return;
 
   Tracker650Parser::DvlVelocity velocity;
+  const auto result = parser_.parseDVPDX(msg->data, velocity);
 
-  try {
-    if (!parser_.parseDVPDX(msg->data, velocity))
-      return;  // confidence=0 or other normal discard — parser already logged
-  } catch (const std::exception & e) {
-    RCLCPP_WARN(this->get_logger(), "DVPDX parse exception: %s | packet: %s",
-                e.what(), msg->data.c_str());
+  if (result != Tracker650Parser::Result::OK) {
+    if (result == Tracker650Parser::Result::ZERO_CONFIDENCE) {
+      // Normal when out of water or too close to the bottom — not a code error.
+      RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+        "DVL not publishing: confidence=0");
+    } else {
+      RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+        "DVL sentence rejected (%s): %s",
+        Tracker650Parser::resultName(result), msg->data.c_str());
+    }
     return;
   }
+
+  RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+    "DVL ok: vx=%.3f vy=%.3f vz=%.3f conf=%d",
+    velocity.vx, velocity.vy, velocity.vz, velocity.confidence);
 
   geometry_msgs::msg::TwistWithCovarianceStamped twist_msg;
   twist_msg.header.stamp    = this->now();
