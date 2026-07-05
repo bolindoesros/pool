@@ -92,6 +92,7 @@ def generate_launch_description() -> LaunchDescription:
         remappings=[
             ('vesc/commands/duty_cycle', '/vesc/commands/duty_cycle'),
             ('vesc/commands/current',    '/vesc/commands/current'),
+            ('vesc/commands/rpm',        '/vesc/commands/rpm'),
         ],
         respawn=True,
         respawn_delay=2.0,
@@ -107,6 +108,7 @@ def generate_launch_description() -> LaunchDescription:
         remappings=[
             ('vesc/commands/duty_cycle', '/vesc/commands/duty_cycle'),
             ('vesc/commands/current',    '/vesc/commands/current'),
+            ('vesc/commands/rpm',        '/vesc/commands/rpm'),
         ],
         respawn=True,
         respawn_delay=2.0,
