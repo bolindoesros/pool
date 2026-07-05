@@ -16,13 +16,7 @@ pixi install
 pixi run build
 ```
 
-### 3. Run tests
-
-```bash
-pixi run test
-```
-
-### 4. Activate the environment
+### 3. Activate the environment
 
 ```bash
 pixi shell

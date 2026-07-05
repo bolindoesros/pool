@@ -67,12 +67,6 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# Install launch
-install(DIRECTORY
-  launch
-  DESTINATION share/${PROJECT_NAME}
-)
-
 # Export include directory
 ament_export_include_directories(include)
 

@@ -1,57 +1,66 @@
+# Loki AUV dataflow
+
+Rates and gating verified against the code on 2026-07-05. If you change a
+rate, watchdog, or topic, update this file — a stale diagram is worse than none.
+
 ```mermaid
 flowchart TD
-    subgraph ESP32["ESP32-S3 firmware"]
-        IMU["ICM45686 IMU + RM3100 mag + MS5837 pressure"]
-        RawPub["UrosInterface: publish esp/raw_sensor"]
-        PcSub["UrosInterface: subscribe /pc_to_esp_cmd\n(handlePcCmd)"]
-        Servos["ServoOutput x4 (GPIO 39-42)\nESP32Servo attach/writeMicroseconds"]
-        Failsafe["2s command timeout\n-> neutral if no packet"]
+    subgraph ESP32["ESP32-S3 firmware (lives in loki_ws, not this repo)"]
+        Sensors["ICM45686 IMU + RM3100 mag<br/>(MS5837 pressure read but unused downstream)"]
+        RawPub["publish esp/raw_sensor 50 Hz<br/>(auv_interfaces/EspRawSensor)"]
+        PcSub["subscribe /pc_to_esp_cmd<br/>(loki_msgs/EspPacket)"]
+        Servos["4 servos, GPIO 39-42<br/>pwm[0..1]=elevator, pwm[2..3]=rudder"]
+        Failsafe["2 s command timeout -> neutral"]
 
-        IMU --> RawPub
+        Sensors --> RawPub
         PcSub --> Servos
         PcSub --> Failsafe
         Failsafe --> Servos
     end
 
-    RawPub -->|"esp/raw_sensor"| IMUFilter["imu_filter_madgwick\n-> imu/data_raw fused orientation"]
-    IMUFilter -->|"imu/data"| EKF["ekf_filter (robot_localization)"]
-    EKF -->|"/odometry/filtered"| Controller
+    RawPub -->|"esp/raw_sensor"| Ahrs["ahrs_orientation (loki_icm)<br/>-> /imu/data_raw + /imu/mag, 50 Hz"]
+    Ahrs -->|"/imu/data_raw"| Madgwick["imu_filter_madgwick<br/>-> /imu/data"]
 
-    subgraph Controller["loki_controller"]
-        OdomSub["on_odometry()\nupdates current_depth_/pitch_/heading_/speed_\nresets last_odom_time_"]
-        ArmSrv["/system/arm service\nis_armed_ true/false"]
-        ArmPub["/system/arm_state\n(1Hz republish)"]
+    DVL["Tracker 650 DVL"] -->|"UDP :27000"| Recv["tracker650_receiver<br/>-> dvl/raw_data"]
+    Recv --> Repub["tracker650_republisher<br/>parses $DVPDX; rejects logged with reason<br/>(ZERO_CONFIDENCE / MALFORMED / BAD_DT), throttled 5 s"]
+    Repub -->|"/dvl/twist_stamped"| EKF
 
-        OuterLoop["outer_loop() 20Hz\ndepth PID -> desired_pitch_\nGATED: odom_watchdog_enabled_ + odom stale + armed -> return"]
-        InnerLoop["inner_loop() 100Hz\npitch/yaw/speed PID -> /cmd/thruster,elevator,rudder\nGATED: !armed -> return\nGATED (NEW FIX): odom stale -> force neutral + reset PIDs"]
+    Madgwick -->|"/imu/data"| EKF["ekf_filter (robot_localization), 50 Hz<br/>-> /odometry/filtered"]
+    EKF --> Controller
 
-        OdomSub --> OuterLoop
-        OuterLoop --> InnerLoop
-        ArmSrv --> ArmPub
-        ArmSrv --> OuterLoop
-        ArmSrv --> InnerLoop
+    subgraph Controller["loki_controller (currently commented out of real.launch.py)"]
+        Arm["/system/arm (SetBool service)<br/>arm state republished 1 Hz"]
+        Outer["outer loop 25 Hz: depth PID -> desired pitch<br/>always publishes /monitor/target/*"]
+        Inner["inner loop 100 Hz: speed/yaw/pitch PIDs<br/>-> /cmd/thruster,elevator,rudder (PWM 1100-1900)"]
+        Watchdog["odom watchdog: stale > 0.5 s while armed<br/>-> hold neutral 1500, reset PIDs"]
+
+        Arm --> Inner
+        Outer --> Inner
+        Watchdog --> Inner
     end
 
-    ArmPub -->|"/system/arm_state"| HwBridge
-    InnerLoop -->|"/cmd/elevator /cmd/rudder /cmd/thruster"| HwBridge
-    InnerLoop -->|"/cmd/moving_mass"| HwBridge
+    Inner -->|"/cmd/*"| HwBridge
 
-    subgraph HwBridge["hw_bridge (20Hz timer)"]
-        ArmGate["armed_ ? passthrough : force neutral(1500)/0"]
-        BuildPkt["build EspPacket:\npwm[0..1]=elevator, pwm[2..3]=rudder\nmass_target_revs"]
-        DutyConv["thruster PWM -> duty_cycle"]
-
-        ArmGate --> BuildPkt
+    subgraph HwBridge["hw_bridge, 25 Hz"]
+        Gate["disarmed -> fins neutral, mass 0, duty 0"]
+        Pkt["EspPacket to /pc_to_esp_cmd"]
+        Duty["/cmd/thruster -> duty, event-driven"]
+        Gate --> Pkt
     end
 
-    BuildPkt -->|"/pc_to_esp_cmd (EspPacket)"| PcSub
-    DutyConv -->|"vesc/commands/duty_cycle"| VescDriver["vesc_driver nodes (vesc1, vesc2)\n/dev/vesc_1, /dev/vesc_2"]
-    VescDriver --> Thruster["physical VESC / thruster motor"]
+    Pkt -->|"/pc_to_esp_cmd"| PcSub
+    Duty -->|"/vesc/commands/duty_cycle"| Vesc["vesc_driver x2 (ns vesc1/vesc2)<br/>shared duty/current/rpm topics, invert per side<br/>handshake gate; 0.5 s command watchdog -> zero<br/>telemetry 10 Hz on /vescN/vesc/telemetry/*"]
+    Vesc --> Thrusters["thrusters via /dev/vesc_1, /dev/vesc_2"]
 
-    Manual["Manual test: ros2 topic pub\n(/cmd/elevator, /cmd/rudder, or\ndirectly /pc_to_esp_cmd)"] -.->|"competes with controller\nif both publish at once"| HwBridge
-    Manual -.->|"bypasses hw_bridge entirely"| PcSub
-
-    style Failsafe fill:#5b2020
-    style InnerLoop fill:#20405b
-    style ArmGate fill:#20405b
+    EKF -->|"/odometry/filtered"| Monitor["loki_monitor<br/>/monitor/* Float64s per odom msg<br/>paths capped 2000 poses, published 1 Hz"]
 ```
+
+## Safety chain (independent layers)
+
+| Layer | Trips after | Action |
+|---|---|---|
+| controller odom watchdog | 0.5 s without `/odometry/filtered` | `/cmd/*` -> 1500, PIDs reset |
+| hw_bridge arm gate | disarmed (default) | fins neutral, mass 0, duty 0 |
+| VESC command watchdog | 0.5 s without a command | thruster zeroed |
+| VESC current/RPM backstop | telemetry over `max_current_a` / `max_rpm` | thruster zeroed |
+| ESP32 firmware failsafe | 2 s without `/pc_to_esp_cmd` | servos neutral |
