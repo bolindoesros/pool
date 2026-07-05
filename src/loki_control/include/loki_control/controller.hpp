@@ -55,8 +55,8 @@ private:
     const std_srvs::srv::SetBool::Response::SharedPtr res);
 
   // ── Control loops ─────────────────────────────────────────
-  void outer_loop();   // 20Hz 
-  void inner_loop();   // 100Hz 
+  void outer_loop();   // 25Hz
+  void inner_loop();   // 100Hz
 
   // ── Helpers ───────────────────────────────────────────────
   static int    effort_to_pwm(double effort);  // [-400, +400] → PWM [1100, 1900], neutral 1500

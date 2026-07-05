@@ -173,26 +173,26 @@ void ControllerNode::on_odometry(const nav_msgs::msg::Odometry::SharedPtr msg)
   if (current_heading_ < 0.0) current_heading_ += 360.0;
 }
 
-// outer loop runs at 20Hz, computes depth PID (outer cascade) and updates desired pitch
+// outer loop runs at 25Hz, computes depth PID (outer cascade) and updates desired pitch
 void ControllerNode::outer_loop()
 {
   auto   t  = now();
   double dt = std::clamp((t - last_time_outer_).seconds(), 1e-4, 0.1);
   last_time_outer_ = t;
 
-  // Odom watchdog: if no odometry for > ODOM_TIMEOUT_S, suppress control
+  // Monitoring
+  publish_f64(mon_target_depth_pub_,   target_depth_);
+  publish_f64(mon_target_heading_pub_, target_heading_);
+  publish_f64(mon_target_speed_pub_,   target_speed_);
+  publish_f64(mon_target_mass_pub_,    target_moving_mass_);
+
+  // Odom watchdog
   double odom_age = (now() - last_odom_time_).seconds();
   if (odom_watchdog_enabled_ && odom_age > ODOM_TIMEOUT_S) {
     RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000,
       "No odometry for %.2fs — suppressing control output", odom_age);
     if (is_armed_) return;
   }
-
-  // ── 2. Monitoring ──────────────────────────────────────────
-  publish_f64(mon_target_depth_pub_,   target_depth_);
-  publish_f64(mon_target_heading_pub_, target_heading_);
-  publish_f64(mon_target_speed_pub_,   target_speed_);
-  publish_f64(mon_target_mass_pub_,    target_moving_mass_);
 
   if (!is_armed_) return;  // inner loop handles neutral outputs
 
@@ -210,11 +210,9 @@ void ControllerNode::inner_loop()
   double dt = std::clamp((t - last_time_inner_).seconds(), 1e-4, 0.05);
   last_time_inner_ = t;
 
-  // When disarmed, don't publish — allows manual cmd topic overrides during testing
   if (!is_armed_) return;
 
-  // Odom watchdog: without fresh odometry, desired_pitch_/current_pitch_ are frozen,
-  // so the PIDs would just wind up against a stale error forever. Hold neutral instead.
+  // Odom watchdog: without fresh odometry, desired_pitch_/current_pitch_ are frozen
   double odom_age = (now() - last_odom_time_).seconds();
   if (odom_watchdog_enabled_ && odom_age > ODOM_TIMEOUT_S) {
     auto t_msg = std_msgs::msg::Int32(); t_msg.data = 1500;
@@ -230,21 +228,21 @@ void ControllerNode::inner_loop()
     return;
   }
 
-  // ── 2. Speed loop ──────────────────────────────────────────
+  // Speed loop 
   // Thruster is locked at neutral until a non-zero speed is explicitly published.
   double speed_effort = 0.0;
   if (speed_unlocked_) {
     speed_effort = speed_pid_.compute_control(dt, target_speed_ - current_speed_);
   }
 
-  // ── 3. Yaw loop ────────────────────────────────────────────
+  //  Yaw loop 
   double yaw_effort = yaw_pid_.compute_control(dt, wrap_angle(target_heading_ - current_heading_));
 
-  // ── 4. Pitch loop (inner cascade) ──────────────────────────
+  // Pitch loop (inner cascade) 
   double pitch_effort = pitch_pid_.compute_control(
       dt, desired_pitch_ - current_pitch_, -current_pitch_rate_);
 
-  // ── 5. Actuator outputs ────────────────────────────────────
+  // Actuator outputs 
   auto mm_msg = std_msgs::msg::Float64();
   mm_msg.data = target_moving_mass_;
   moving_mass_pub_->publish(mm_msg);

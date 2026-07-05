@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
-BAG_DIR="$HOME/auv_bags"
+BAG_DIR="$HOME/ros_bags"
 mkdir -p "$BAG_DIR"
 cd "$BAG_DIR"
 
-BAG_NAME="auv_bag_$(date +%Y%m%d_%H%M%S)"
+BAG_NAME="ros_bag_$(date +%Y%m%d_%H%M%S)"
 
 echo "Recording ROS Bag: $BAG_DIR/$BAG_NAME"
 echo "Press Ctrl+C to stop recording."

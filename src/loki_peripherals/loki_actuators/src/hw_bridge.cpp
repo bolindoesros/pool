@@ -74,8 +74,8 @@ public:
             "/cmd/moving_mass", qos,
             [this](const std_msgs::msg::Float64::SharedPtr msg) { moving_mass_ = msg->data; });
 
-        // Publish at 20 Hz
-        timer_ = create_wall_timer(std::chrono::milliseconds(50),
+        // Publish at 25 Hz
+        timer_ = create_wall_timer(std::chrono::milliseconds(40),
                                    [this]() { publish(); });
 
         RCLCPP_INFO(get_logger(), "hw_bridge ready to publish commands");
