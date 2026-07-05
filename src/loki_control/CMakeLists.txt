@@ -10,7 +10,6 @@ find_package(rclcpp       REQUIRED)
 find_package(std_msgs     REQUIRED)
 find_package(std_srvs     REQUIRED)
 find_package(nav_msgs     REQUIRED)
-find_package(geometry_msgs REQUIRED)
 find_package(tf2          REQUIRED)
 
 add_library(pid_lib STATIC src/pid.cpp)
@@ -26,7 +25,7 @@ target_include_directories(loki_controller PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_link_libraries(loki_controller pid_lib)
 ament_target_dependencies(loki_controller
-  rclcpp std_msgs std_srvs nav_msgs geometry_msgs tf2)
+  rclcpp std_msgs std_srvs nav_msgs tf2)
 
 install(TARGETS loki_controller pid_lib
   DESTINATION lib/${PROJECT_NAME})
