@@ -49,7 +49,7 @@ foxglove = {cmd = "ros2 launch foxglove_bridge foxglove_bridge_launch.xml", desc
 arm = {cmd = "ros2 service call /system/arm std_srvs/srv/SetBool \"{data: true}\"", description = "Arm the system"}
 
 
-hw = {cmd = "ros2 launch loki_bringup hw.launch.py", description = "Launch the hardware bridge"}
+hw = {cmd = "ros2 run loki_actuators hw_bridge", description = "Launch the hardware bridge"}
 
 vesc-ps = {cmd = "scripts/vesc_ps.sh", description = "List vesc_node processes, their serial ports, and stale handles"}
 vesc-kill = {cmd = "scripts/vesc_ps.sh --kill", description = "Stop all vesc_node processes (SIGINT first, thruster zeroed)"}
@@ -59,3 +59,8 @@ vesc2 = {cmd = "ros2 run loki_vesc vesc_node --ros-args -r __node:=vesc_driver_2
 # Scripts to source on environment activation, found after first colcon build.
 [activation]
 scripts = ["install/setup.bash"]
+
+# colours
+[target.linux-aarch64.activation.env]
+RCUTILS_COLORIZED_OUTPUT = "1"
+RCUTILS_CONSOLE_OUTPUT_FORMAT = "[{severity}] [{name}]: {message}"
