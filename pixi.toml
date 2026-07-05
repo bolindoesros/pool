@@ -46,7 +46,9 @@ stop = {cmd = "scripts/stop_agent.sh"}
 
 main = {cmd = "ros2 launch loki_bringup real.launch.py", description = "Launch the main ROS node"}
 foxglove = {cmd = "ros2 launch foxglove_bridge foxglove_bridge_launch.xml", description = "Foxglove"}
-arm = {cmd = "ros2 service call /system/arm std_srvs/srv/SetBool \"{data: true}\"", description = "Arm the system"}
+arm = {cmd = "ros2 service call /system/arm std_srvs/srv/SetBool \"{data: true}\"", description = "Arm the system (service hosted by hw_bridge)"}
+disarm = {cmd = "ros2 service call /system/arm std_srvs/srv/SetBool \"{data: false}\"", description = "Disarm the system"}
+servo-test = {cmd = "ros2 run loki_bringup servo_test.py", description = "Sweep fin servos (arm first)"}
 
 
 hw = {cmd = "ros2 run loki_actuators hw_bridge", description = "Launch the hardware bridge"}

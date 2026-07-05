@@ -8,6 +8,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp      REQUIRED)
 find_package(std_msgs    REQUIRED)
+find_package(std_srvs    REQUIRED)
 find_package(loki_msgs   REQUIRED)
 
 add_executable(hw_bridge src/hw_bridge.cpp)
@@ -15,6 +16,7 @@ add_executable(hw_bridge src/hw_bridge.cpp)
 ament_target_dependencies(hw_bridge
   rclcpp
   std_msgs
+  std_srvs
   loki_msgs
 )
 

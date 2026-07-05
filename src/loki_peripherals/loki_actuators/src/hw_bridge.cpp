@@ -2,9 +2,11 @@
  * @file hw_bridge.cpp
  * @brief Bridge from the /cmd topics to the actuators.
  *
+ * Srv: /system/arm (SetBool)
  * Sub: /cmd/thruster (PWM µs), /cmd/elevator, /cmd/rudder, /cmd/moving_mass,
  *      /system/arm_state
- * Pub: /vesc/commands/duty_cycle (thruster), /pc_to_esp_cmd (fins + mass, 20 Hz)
+ * Pub: /vesc/commands/duty_cycle (thruster), /pc_to_esp_cmd (fins + mass, 20 Hz),
+ *      /system/arm_state (echoed on service calls so other nodes see arming)
  *
  * Disarmed (the default): fins neutral, mass zero, thruster duty 0.
  */
@@ -12,6 +14,7 @@
 #include <std_msgs/msg/int32.hpp>
 #include <std_msgs/msg/float64.hpp>
 #include <std_msgs/msg/bool.hpp>
+#include <std_srvs/srv/set_bool.hpp>
 #include <loki_msgs/msg/esp_packet.hpp>
 
 // PWM microseconds (1100–1900) → VESC duty cycle (-1.0 to +1.0).
@@ -41,17 +44,26 @@ public:
     {
         auto qos = rclcpp::QoS(10).reliable();
 
-        esp_pub_      = create_publisher<loki_msgs::msg::EspPacket>("/pc_to_esp_cmd", qos);
-        duty_pub_     = create_publisher<std_msgs::msg::Float64>("vesc/commands/duty_cycle", qos);
+        esp_pub_       = create_publisher<loki_msgs::msg::EspPacket>("/pc_to_esp_cmd", qos);
+        duty_pub_      = create_publisher<std_msgs::msg::Float64>("vesc/commands/duty_cycle", qos);
+        arm_state_pub_ = create_publisher<std_msgs::msg::Bool>("/system/arm_state", qos);
+
+        arm_srv_ = create_service<std_srvs::srv::SetBool>(
+            "/system/arm",
+            [this](const std_srvs::srv::SetBool::Request::SharedPtr req,
+                   std_srvs::srv::SetBool::Response::SharedPtr res) {
+                set_armed(req->data, "service");
+                std_msgs::msg::Bool msg;
+                msg.data = armed_;
+                arm_state_pub_->publish(msg);
+                res->success = true;
+                res->message = armed_ ? "armed" : "disarmed";
+            });
 
         arm_state_sub_ = create_subscription<std_msgs::msg::Bool>(
             "/system/arm_state", qos,
             [this](const std_msgs::msg::Bool::SharedPtr msg) {
-                if (msg->data != armed_) {
-                    RCLCPP_INFO(get_logger(), "[hw_bridge debug] arm_state changed: %s -> %s",
-                        armed_ ? "true" : "false", msg->data ? "true" : "false");
-                }
-                armed_ = msg->data;
+                set_armed(msg->data, "topic");
             });
 
         thruster_sub_ = create_subscription<std_msgs::msg::Int32>(
@@ -82,6 +94,15 @@ public:
     }
 
 private:
+    void set_armed(bool armed, const char * source)
+    {
+        if (armed != armed_) {
+            RCLCPP_INFO(get_logger(), "arm_state changed via %s: %s -> %s",
+                source, armed_ ? "true" : "false", armed ? "true" : "false");
+        }
+        armed_ = armed;
+    }
+
     void publish()
     {
         loki_msgs::msg::EspPacket pkt;
@@ -89,10 +110,11 @@ private:
         pkt.seq    = seq_++;
         int elevator = armed_ ? elevator_ : 1500;
         int rudder   = armed_ ? rudder_   : 1500;
-        pkt.pwm[0] = clamp_pwm(elevator);                 // GPIO 39 right elevator
-        pkt.pwm[1] = clamp_pwm(elevator);                 // GPIO 40 left elevator
+        // Direction inversion per fin is handled on the ESP32 side.
+        pkt.pwm[0] = clamp_pwm(elevator);                 // GPIO 39 port elevator
+        pkt.pwm[1] = clamp_pwm(elevator);                 // GPIO 40 starboard elevator
         pkt.pwm[2] = clamp_pwm(rudder);                   // GPIO 41 top rudder
-        pkt.pwm[3] = clamp_pwm(rudder);                   // GPIO 42 bot rudder
+        pkt.pwm[3] = clamp_pwm(rudder);                   // GPIO 42 bottom rudder
         pkt.mass_target_revs = mass_to_revs(armed_ ? moving_mass_ : 0.0);
         esp_pub_->publish(pkt);
 
@@ -104,6 +126,8 @@ private:
 
     rclcpp::Publisher<loki_msgs::msg::EspPacket>::SharedPtr esp_pub_;
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr    duty_pub_;
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr       arm_state_pub_;
+    rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr      arm_srv_;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr    arm_state_sub_;
     rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr   thruster_sub_;
     rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr   elevator_sub_;
