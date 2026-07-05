@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Direct servo test — bypasses the controller and arm gate.
+Direct servo test — bypasses the controller, but NOT hw_bridge's arm gate:
+the system must be armed or hw_bridge forces the servos to neutral.
 
 Publishes fixed PWM values to /cmd/elevator and /cmd/rudder so hw_bridge
 forwards them straight to the ESP32 servos.
@@ -69,7 +70,6 @@ def main():
     parser.add_argument('--elevator', type=int, default=None, help='elevator PWM µs (1100-1900)')
     parser.add_argument('--rudder',   type=int, default=None, help='rudder PWM µs (1100-1900)')
     parser.add_argument('--neutral',  action='store_true',    help='send neutral (1500) to all servos')
-    parser.add_argument('--sweep',    action='store_true',    help='sweep through positions (default if no args)')
 
     # strip ros args before argparse sees them
     args, _ = parser.parse_known_args()
