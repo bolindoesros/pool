@@ -13,6 +13,7 @@ install(PROGRAMS
   scripts/servo_test.py
   scripts/circle_test.py
   scripts/box_test.py
+  scripts/teleop.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

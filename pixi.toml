@@ -45,13 +45,19 @@ start = {cmd = "scripts/start_agent.sh"}
 stop = {cmd = "scripts/stop_agent.sh"}
 
 main = {cmd = "ros2 launch loki_bringup real.launch.py", description = "Launch the main ROS node"}
+sim = {cmd = "ros2 launch loki_bringup sim.launch.py", description = "Launch the Unity sim stack (ros_tcp_endpoint + ekf + controller + monitor)"}
 foxglove = {cmd = "ros2 launch foxglove_bridge foxglove_bridge_launch.xml", description = "Foxglove"}
 arm = {cmd = "ros2 service call /system/arm std_srvs/srv/SetBool \"{data: true}\"", description = "Arm the system (service hosted by hw_bridge)"}
 disarm = {cmd = "ros2 service call /system/arm std_srvs/srv/SetBool \"{data: false}\"", description = "Disarm the system"}
-servo-test = {cmd = "ros2 run loki_bringup servo_test.py", description = "Sweep fin servos (arm first)"}
-
-
 hw = {cmd = "ros2 run loki_actuators hw_bridge", description = "Launch the hardware bridge"}
+
+
+servo-test = {cmd = "ros2 run loki_bringup servo_test.py", description = "Sweep fin servos (arm first)"}
+teleop = {cmd = "ros2 run loki_bringup teleop.py", description = "Keyboard remote control for thrusters and fin servos (press 'a' to arm)"}
+
+
+sim-ps = {cmd = "scripts/sim_ps.sh", description = "List sim.launch.py nodes and whether :10000 is held"}
+sim-kill = {cmd = "scripts/sim_ps.sh --kill", description = "Stop the sim stack (SIGINT launch tree, SIGKILL stragglers, free :10000)"}
 
 vesc-ps = {cmd = "scripts/vesc_ps.sh", description = "List vesc_node processes, their serial ports, and stale handles"}
 vesc-kill = {cmd = "scripts/vesc_ps.sh --kill", description = "Stop all vesc_node processes (SIGINT first, thruster zeroed)"}
