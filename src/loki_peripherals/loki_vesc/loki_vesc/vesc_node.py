@@ -45,6 +45,12 @@ DUTY_SCALE    = 100000  # duty -1..1
 CURRENT_SCALE = 1000    # A -> mA
 RPM_SCALE     = 1       # eRPM is already integer
 
+# Caps how long one read can block the single-threaded executor when the VESC goes
+# silent — a stalled read delays the command callbacks and the thruster watchdog.
+# A GET_VALUES reply is ~55 B (~5 ms on the wire at 115200 baud), so this leaves
+# ample margin for a healthy link while bounding the stall on a dead one.
+SERIAL_READ_TIMEOUT_S = 0.05
+
 FAULT_NAMES = {
     0: 'NONE', 1: 'OVER_VOLTAGE', 2: 'UNDER_VOLTAGE', 3: 'DRV',
     4: 'ABS_OVER_CURRENT', 5: 'OVER_TEMP_FET', 6: 'OVER_TEMP_MOTOR',
@@ -155,7 +161,7 @@ class VescNode(Node):
             self.get_logger().fatal("Parameter 'port' is required (e.g. -p port:=/dev/vesc_1)")
             raise SystemExit(1)
         try:
-            self._ser = serial.Serial(port, baud, timeout=0.1)
+            self._ser = serial.Serial(port, baud, timeout=SERIAL_READ_TIMEOUT_S)
         except serial.SerialException as e:
             self.get_logger().fatal(f'Cannot open {port}: {e}')
             raise SystemExit(1)

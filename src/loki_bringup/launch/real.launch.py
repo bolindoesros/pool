@@ -153,6 +153,6 @@ def generate_launch_description() -> LaunchDescription:
         vesc_driver_1,
         vesc_driver_2,
         TimerAction(period=2.0, actions=[ekf_node]),
-        # TimerAction(period=4.0, actions=[controller]),
+        TimerAction(period=4.0, actions=[controller]),
         TimerAction(period=6.0, actions=[monitor]),
     ])

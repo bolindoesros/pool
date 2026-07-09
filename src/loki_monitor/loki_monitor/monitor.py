@@ -97,8 +97,7 @@ class MonitorNode(Node):
         self._pub_f("heading", self._yaw_to_heading(yaw))
 
     def _yaw_to_heading(self, yaw: float) -> float:
-        # yaw from atan2 is in [-pi, pi] radians
-        # convert to degrees then shift negative values to get compass range of to 0 - 360
+        # Normalises yaw from [-pi, pi] radians to 0-360 degrees.
         heading = math.degrees(yaw)
         if heading < 0.0:
             heading += 360.0

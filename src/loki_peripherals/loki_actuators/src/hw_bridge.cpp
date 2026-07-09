@@ -1,15 +1,10 @@
 /**
  * @file hw_bridge.cpp
  * @brief Bridge from the /cmd topics to the actuators.
- *
- * Srv: /system/arm (SetBool)
- * Sub: /cmd/thruster (PWM µs), /cmd/elevator, /cmd/rudder, /cmd/moving_mass,
- *      /system/arm_state
- * Pub: /vesc/commands/duty_cycle (thruster), /pc_to_esp_cmd (fins + mass, 20 Hz),
- *      /system/arm_state (echoed on service calls so other nodes see arming)
- *
- * Disarmed (the default): fins neutral, mass zero, thruster duty 0.
  */
+#include <algorithm>
+#include <cstdint>
+
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include <std_msgs/msg/float64.hpp>
@@ -17,14 +12,13 @@
 #include <std_srvs/srv/set_bool.hpp>
 #include <loki_msgs/msg/esp_packet.hpp>
 
-// PWM microseconds (1100–1900) → VESC duty cycle (-1.0 to +1.0).
-// 1500 µs = neutral, ±400 µs = full throw.
+// PWM 1100–1900 → VESC duty cycle (-1.0 to +1.0).
 static double pwm_to_duty(int pwm)
 {
     return std::clamp((pwm - 1500) / 400.0, -1.0, 1.0);
 }
 
-// Clamp to the valid PWM pulse-width window (microseconds).
+// Clamp to the valid PWM pulse-width range of 1100–1900 µs.
 static uint16_t clamp_pwm(int pwm)
 {
     return static_cast<uint16_t>(std::max(1100, std::min(1900, pwm)));
@@ -52,18 +46,10 @@ public:
             "/system/arm",
             [this](const std_srvs::srv::SetBool::Request::SharedPtr req,
                    std_srvs::srv::SetBool::Response::SharedPtr res) {
-                set_armed(req->data, "service");
-                std_msgs::msg::Bool msg;
-                msg.data = armed_;
-                arm_state_pub_->publish(msg);
+                set_armed(req->data);
+                publish_arm_state();
                 res->success = true;
                 res->message = armed_ ? "armed" : "disarmed";
-            });
-
-        arm_state_sub_ = create_subscription<std_msgs::msg::Bool>(
-            "/system/arm_state", qos,
-            [this](const std_msgs::msg::Bool::SharedPtr msg) {
-                set_armed(msg->data, "topic");
             });
 
         thruster_sub_ = create_subscription<std_msgs::msg::Int32>(
@@ -90,17 +76,29 @@ public:
         timer_ = create_wall_timer(std::chrono::milliseconds(40),
                                    [this]() { publish(); });
 
+        // Republish arm state at 1 Hz so late-joining followers (controller, monitor)
+        // always converge to the current value.
+        arm_state_timer_ = create_wall_timer(std::chrono::milliseconds(1000),
+                                             [this]() { publish_arm_state(); });
+
         RCLCPP_INFO(get_logger(), "hw_bridge ready to publish commands");
     }
 
 private:
-    void set_armed(bool armed, const char * source)
+    void set_armed(bool armed)
     {
         if (armed != armed_) {
-            RCLCPP_INFO(get_logger(), "arm_state changed via %s: %s -> %s",
-                source, armed_ ? "true" : "false", armed ? "true" : "false");
+            RCLCPP_INFO(get_logger(), "arm_state: %s -> %s",
+                armed_ ? "true" : "false", armed ? "true" : "false");
         }
         armed_ = armed;
+    }
+
+    void publish_arm_state()
+    {
+        std_msgs::msg::Bool msg;
+        msg.data = armed_;
+        arm_state_pub_->publish(msg);
     }
 
     void publish()
@@ -128,14 +126,14 @@ private:
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr    duty_pub_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr       arm_state_pub_;
     rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr      arm_srv_;
-    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr    arm_state_sub_;
     rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr   thruster_sub_;
     rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr   elevator_sub_;
     rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr   rudder_sub_;
     rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr moving_mass_sub_;
     rclcpp::TimerBase::SharedPtr timer_;
+    rclcpp::TimerBase::SharedPtr arm_state_timer_;
 
-    bool   armed_       = false;  // safe default until /system/arm_state is heard
+    bool   armed_       = false;  
     int    elevator_    = 1500;
     int    rudder_      = 1500;
     double moving_mass_ = 0.0;

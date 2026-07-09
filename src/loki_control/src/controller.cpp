@@ -14,8 +14,8 @@ namespace loki
 // Timer periods
 static constexpr int    OUTER_LOOP_MS    = 40;   // 25Hz — depth PID (outer cascade)
 static constexpr int    INNER_LOOP_MS    = 10;   // 100Hz — pitch, speed, yaw PIDs (inner cascade)
-static constexpr double MAX_MOVING_MASS  = 0.2;  // m — physical travel limit of moving mass stepper (20 cm)
-static constexpr double ODOM_TIMEOUT_S   = 0.5;  // s — odometry older than this is considered stale
+static constexpr double MAX_MOVING_MASS  = 0.2;  // m 
+static constexpr double ODOM_TIMEOUT_S   = 0.5;  // s 
 
 ControllerNode::ControllerNode()
 : Node("loki_controller")
@@ -39,12 +39,14 @@ ControllerNode::ControllerNode()
   target_speed_sub_       = create_subscription<std_msgs::msg::Float64>("/target/speed", qos, std::bind(&ControllerNode::on_target_speed, this, std::placeholders::_1));
   target_moving_mass_sub_ = create_subscription<std_msgs::msg::Float64>("/target/moving_mass", qos, std::bind(&ControllerNode::on_target_moving_mass, this, std::placeholders::_1));
 
+  // Arm state owned by hw_bridge 
+  arm_state_sub_          = create_subscription<std_msgs::msg::Bool>("/system/arm_state", qos, std::bind(&ControllerNode::on_arm_state, this, std::placeholders::_1));
+
   // ── Actuator publishers ────────────────────────────────────
   thruster_pub_    = create_publisher<std_msgs::msg::Int32>  ("/cmd/thruster",     qos);
   elevator_pub_    = create_publisher<std_msgs::msg::Int32>  ("/cmd/elevator",     qos);
   rudder_pub_      = create_publisher<std_msgs::msg::Int32>  ("/cmd/rudder",       qos);
   moving_mass_pub_ = create_publisher<std_msgs::msg::Float64>("/cmd/moving_mass",  qos);
-  arm_state_pub_   = create_publisher<std_msgs::msg::Bool>   ("/system/arm_state", qos);
 
   // ── Monitor publishers ─────────────────────────────────────
   mon_target_depth_pub_   = create_publisher<std_msgs::msg::Float64>("/monitor/target/depth",       qos);
@@ -52,10 +54,6 @@ ControllerNode::ControllerNode()
   mon_target_speed_pub_   = create_publisher<std_msgs::msg::Float64>("/monitor/target/speed",       qos);
   mon_target_mass_pub_    = create_publisher<std_msgs::msg::Float64>("/monitor/target/moving_mass", qos);
   mon_desired_pitch_pub_  = create_publisher<std_msgs::msg::Float64>("/monitor/desired_pitch",      qos);
-
-  // ── Arm service ────────────────────────────────────────────
-  arm_srv_ = create_service<std_srvs::srv::SetBool>("/system/arm",
-    std::bind(&ControllerNode::on_arm, this, std::placeholders::_1, std::placeholders::_2));
 
   // ── Timers ─────────────────────────────────────────────────
   outer_timer_ = create_wall_timer(
@@ -65,15 +63,6 @@ ControllerNode::ControllerNode()
   inner_timer_ = create_wall_timer(
     std::chrono::milliseconds(INNER_LOOP_MS),
     std::bind(&ControllerNode::inner_loop, this));
-
-  // Republish arm state at 1 Hz so monitor always has current value
-  arm_state_timer_ = create_wall_timer(
-    std::chrono::milliseconds(1000),
-    [this]() {
-      auto msg = std_msgs::msg::Bool();
-      msg.data = is_armed_;
-      arm_state_pub_->publish(msg);
-    });
 
   last_time_outer_ = now();
   last_time_inner_ = now();
@@ -101,28 +90,21 @@ void ControllerNode::on_target_moving_mass(const std_msgs::msg::Float64::SharedP
   target_moving_mass_ = std::clamp(msg->data, 0.0, MAX_MOVING_MASS);
 }
 
-// arm service callback
-void ControllerNode::on_arm(
-  const std_srvs::srv::SetBool::Request::SharedPtr req,
-  const std_srvs::srv::SetBool::Response::SharedPtr res)
+void ControllerNode::on_arm_state(const std_msgs::msg::Bool::SharedPtr msg)
 {
-  is_armed_ = req->data;
+  if (msg->data == is_armed_) return;  // no transition
+  is_armed_ = msg->data;
 
   if (is_armed_) {
+    // clean start
     target_heading_     = current_heading_;
     target_depth_       = current_depth_;
     target_speed_       = 0.0;
     target_moving_mass_ = 0.0;
     speed_unlocked_     = false;
-
-    speed_pid_.reset_controller();
-    yaw_pid_.reset_controller();
-    depth_pid_.reset_controller();
-    pitch_pid_.reset_controller();
-
-    res->message = "Armed";
     RCLCPP_INFO(get_logger(), "ARMED");
   } else {
+    // neutral outputs on disarm
     auto pwm = std_msgs::msg::Int32();
     pwm.data  = 1500;
     thruster_pub_->publish(pwm);
@@ -132,20 +114,13 @@ void ControllerNode::on_arm(
     auto mm = std_msgs::msg::Float64();
     mm.data  = 0.0;
     moving_mass_pub_->publish(mm);
-
-    speed_pid_.reset_controller();
-    yaw_pid_.reset_controller();
-    depth_pid_.reset_controller();
-    pitch_pid_.reset_controller();
-
-    res->message = "Disarmed";
     RCLCPP_INFO(get_logger(), "DISARMED");
   }
 
-  res->success = true;
-  auto msg  = std_msgs::msg::Bool();
-  msg.data  = is_armed_;
-  arm_state_pub_->publish(msg);
+  speed_pid_.reset_controller();
+  yaw_pid_.reset_controller();
+  depth_pid_.reset_controller();
+  pitch_pid_.reset_controller();
 }
 
 void ControllerNode::on_odometry(const nav_msgs::msg::Odometry::SharedPtr msg)
@@ -169,7 +144,7 @@ void ControllerNode::on_odometry(const nav_msgs::msg::Odometry::SharedPtr msg)
   current_heading_    = yaw   * 180.0 / M_PI;
   current_pitch_rate_ = msg->twist.twist.angular.y * 180.0 / M_PI;  // derivative damping in pitch loop
 
-  // Normalise to [0, 360] — wrap_angle() handles the error wrapping in the yaw loop.
+  // Normalise to [0, 360] 
   if (current_heading_ < 0.0) current_heading_ += 360.0;
 }
 
@@ -222,6 +197,9 @@ void ControllerNode::inner_loop()
     elevator_pub_->publish(e_msg);
     rudder_pub_->publish(r_msg);
 
+    auto mm_msg = std_msgs::msg::Float64(); mm_msg.data = 0.0;
+    moving_mass_pub_->publish(mm_msg);
+
     speed_pid_.reset_controller();
     yaw_pid_.reset_controller();
     pitch_pid_.reset_controller();
@@ -229,7 +207,6 @@ void ControllerNode::inner_loop()
   }
 
   // Speed loop 
-  // Thruster is locked at neutral until a non-zero speed is explicitly published.
   double speed_effort = 0.0;
   if (speed_unlocked_) {
     speed_effort = speed_pid_.compute_control(dt, target_speed_ - current_speed_);

@@ -88,13 +88,16 @@ class Teleop(Node):
             self._step = max(self._step - 5, 5)
 
     def _set_armed(self, armed: bool):
+        """Request an arm state change. Returns the response future, or None if
+        hw_bridge isn't up — callers that must not exit early can wait on it."""
         if not self._arm_client.service_is_ready():
             self.get_logger().warn('/system/arm not available — is hw_bridge running?')
-            return
+            return None
         req = SetBool.Request()
         req.data = armed
-        self._arm_client.call_async(req)
+        future = self._arm_client.call_async(req)
         self._armed = armed
+        return future
 
     # --- publish + status ---------------------------------------------------
 
@@ -117,9 +120,11 @@ class Teleop(Node):
         sys.stdout.flush()
 
     def neutralize(self):
+        """Command neutral and disarm. Returns the disarm future so the caller can
+        block on it before tearing down the context."""
         self._thruster = self._elevator = self._rudder = NEUTRAL
         self._tick()
-        self._set_armed(False)
+        return self._set_armed(False)
 
 
 def main():
@@ -145,9 +150,19 @@ def main():
                 node.handle_key(key)
     finally:
         termios.tcsetattr(stdin_fd, termios.TCSADRAIN, old_attrs)
-        node.neutralize()
+        disarm = node.neutralize()
         print()  # drop off the status line
-        node.get_logger().info('teleop exiting — disarmed and neutral')
+        # Block until hw_bridge acknowledges the disarm. Tearing the context down
+        # straight after call_async can drop the request before it leaves the
+        # middleware, which would leave the vehicle armed on exit.
+        if disarm is not None:
+            rclpy.spin_until_future_complete(node, disarm, timeout_sec=1.0)
+            if disarm.done():
+                node.get_logger().info('teleop exiting — disarmed and neutral')
+            else:
+                node.get_logger().error('teleop exiting — DISARM NOT CONFIRMED, check hw_bridge')
+        else:
+            node.get_logger().warn('teleop exiting — neutral, but disarm was never sent')
         node.destroy_node()
         rclpy.shutdown()
 

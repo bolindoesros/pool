@@ -12,13 +12,15 @@
  *
  * Standard topic interface:
  *   Sub: /odometry/filtered, /target/depth, /target/heading,
- *        /target/speed, /target/moving_mass
+ *        /target/speed, /target/moving_mass, /system/arm_state
  *   Pub: /cmd/thruster, /cmd/elevator, /cmd/rudder,
- *        /cmd/moving_mass, /system/arm_state,
+ *        /cmd/moving_mass,
  *        /monitor/target/depth, /monitor/target/heading,
  *        /monitor/target/speed, /monitor/target/moving_mass,
  *        /monitor/desired_pitch
- *   Srv: /system/arm
+ *
+ * Arming is owned by hw_bridge: it hosts /system/arm and publishes /system/arm_state,
+ * which this node follows (it never hosts the service itself).
  */
 
 #ifndef LOKI_CONTROL__CONTROLLER_HPP_
@@ -28,7 +30,6 @@
 #include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float64.hpp>
 #include <std_msgs/msg/int32.hpp>
-#include <std_srvs/srv/set_bool.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
@@ -50,9 +51,7 @@ private:
   void on_target_heading(const std_msgs::msg::Float64::SharedPtr msg);
   void on_target_speed(const std_msgs::msg::Float64::SharedPtr msg);
   void on_target_moving_mass(const std_msgs::msg::Float64::SharedPtr msg);
-  void on_arm(
-    const std_srvs::srv::SetBool::Request::SharedPtr req,
-    const std_srvs::srv::SetBool::Response::SharedPtr res);
+  void on_arm_state(const std_msgs::msg::Bool::SharedPtr msg);
 
   // ── Control loops ─────────────────────────────────────────
   void outer_loop();   // 25Hz
@@ -102,13 +101,13 @@ private:
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr      target_heading_sub_;
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr      target_speed_sub_;
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr      target_moving_mass_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr         arm_state_sub_;
 
   // ── Publishers ────────────────────────────────────────────
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr   thruster_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr   elevator_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr   rudder_pub_;
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr moving_mass_pub_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr    arm_state_pub_;
 
   // ── Monitor publishers ────────────────────────────────────
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr mon_target_depth_pub_;
@@ -117,11 +116,9 @@ private:
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr mon_target_mass_pub_;
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr mon_desired_pitch_pub_;
 
-  // ── Service and Timers ────────────────────────────────────
-  rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr arm_srv_;
+  // ── Timers ────────────────────────────────────────────────
   rclcpp::TimerBase::SharedPtr                       outer_timer_;
   rclcpp::TimerBase::SharedPtr                       inner_timer_;
-  rclcpp::TimerBase::SharedPtr                       arm_state_timer_;
 };
 
 }  // namespace loki

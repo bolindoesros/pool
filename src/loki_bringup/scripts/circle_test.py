@@ -21,6 +21,10 @@ class CircleTest(Node):
         self.total_turned = 0.0
         self.done         = False
 
+        if self.yaw_rate == 0.0:
+            self.get_logger().fatal('yaw_rate must be non-zero for a circle test')
+            raise SystemExit(1)
+
         radius_m = self.speed_ms / math.radians(self.yaw_rate)
         period_s = 360.0 / self.yaw_rate
         self.get_logger().info(
@@ -54,8 +58,12 @@ class CircleTest(Node):
 
 def main():
     rclpy.init()
-    rclpy.spin(CircleTest())
-    rclpy.shutdown()
+    try:
+        rclpy.spin(CircleTest())
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    finally:
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
