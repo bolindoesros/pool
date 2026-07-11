@@ -61,9 +61,12 @@ sim-kill = {cmd = "scripts/sim_ps.sh --kill", description = "Stop the sim stack 
 
 vesc-ps = {cmd = "scripts/vesc_ps.sh", description = "List vesc_node processes, their serial ports, and stale handles"}
 vesc-kill = {cmd = "scripts/vesc_ps.sh --kill", description = "Stop all vesc_node processes (SIGINT first, thruster zeroed)"}
-vesc1 = {cmd = "ros2 run loki_vesc vesc_node --ros-args -r __node:=vesc_driver_1 --params-file src/loki_bringup/config/vesc_params.yaml", description = "Run VESC driver for thruster 1 (bench test, config from vesc_params.yaml)"}
-vesc2 = {cmd = "ros2 run loki_vesc vesc_node --ros-args -r __node:=vesc_driver_2 --params-file src/loki_bringup/config/vesc_params.yaml", description = "Run VESC driver for thruster 2 (bench test, config from vesc_params.yaml)"}
 
+
+vesc1 = {cmd = "ros2 run loki_vesc vesc_node --ros-args -r __node:=vesc_driver_1 -r __ns:=/vesc1 -r vesc/commands/duty_cycle:=/vesc/commands/duty_cycle -r vesc/commands/current:=/vesc/commands/current -r vesc/commands/rpm:=/vesc/commands/rpm --params-file src/loki_bringup/config/vesc_params.yaml", description = "Run VESC driver for thruster 1 (bench test, telemetry under /vesc1)"}
+vesc2 = {cmd = "ros2 run loki_vesc vesc_node --ros-args -r __node:=vesc_driver_2 -r __ns:=/vesc2 -r vesc/commands/duty_cycle:=/vesc/commands/duty_cycle -r vesc/commands/current:=/vesc/commands/current -r vesc/commands/rpm:=/vesc/commands/rpm --params-file src/loki_bringup/config/vesc_params.yaml", description = "Run VESC driver for thruster 2 (bench test, telemetry under /vesc2)"}
+
+rosbag = {cmd = "mkdir -p logs && cd logs && ros2 bag record -a --exclude-topics /path/ekf /path/ground_truth", description = "Record all topics (minus Path trails) to a timestamped bag under logs/"}
 # Scripts to source on environment activation, found after first colcon build.
 [activation]
 scripts = ["install/setup.bash"]

@@ -6,7 +6,7 @@
     duty_cycle_max: 0.9
     command_timeout_sec: 0.5
     max_current_a: 25.0
-    max_rpm: 10000.0
+    max_rpm: 20000.0
     invert: true
 
 /**/vesc_driver_2:
@@ -16,5 +16,5 @@
     duty_cycle_max: 0.9
     command_timeout_sec: 0.5
     max_current_a: 25.0
-    max_rpm: 10000.0
+    max_rpm: 20000.0
     invert: false   

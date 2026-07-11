@@ -57,12 +57,7 @@ def generate_launch_description() -> LaunchDescription:
         output="screen",
         parameters=[pid_params],
     )
-
-    # hw_bridge owns /system/arm and republishes /system/arm_state, which the
-    # controller follows. It is harmless in pure sim (Unity drives /cmd/* directly;
-    # hw_bridge's /pc_to_esp_cmd + duty outputs simply aren't bridged anywhere).
-    # For hardware-mirroring ("sim mimic"), also run `pixi run start` so the
-    # micro-ROS agent forwards /pc_to_esp_cmd to the real ESP32.
+    
     hw_bridge = Node(
         package="loki_actuators",
         executable="hw_bridge",

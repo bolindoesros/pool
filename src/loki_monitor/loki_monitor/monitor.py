@@ -9,7 +9,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from nav_msgs.msg import Odometry, Path
 from geometry_msgs.msg import PoseStamped
-from std_msgs.msg import Bool, Float64, Int32
+from std_msgs.msg import Bool, Float64
 
 PATH_MAX_POSES   = 2000  # cap trail length so paths don't grow unbounded
 PATH_PUBLISH_SEC = 1.0   # republish full paths at 1 Hz, not per odom tick
@@ -30,11 +30,6 @@ class MonitorNode(Node):
             "heading":         self.create_publisher(Float64, "/monitor/heading_deg",     qos),
             "speed":           self.create_publisher(Float64, "/monitor/speed",           qos),
             "armed":           self.create_publisher(Float64, "/monitor/armed",           qos),
-            # commands, cmd_thruster/elevator/rudder are in PWM, cmd_moving_mass is distance (m)
-            "cmd_thruster":    self.create_publisher(Float64, "/monitor/cmd/thruster",    qos),
-            "cmd_elevator":    self.create_publisher(Float64, "/monitor/cmd/elevator",    qos),
-            "cmd_rudder":      self.create_publisher(Float64, "/monitor/cmd/rudder",      qos),
-            "cmd_moving_mass": self.create_publisher(Float64, "/monitor/cmd/moving_mass", qos),
         }
 
         # paths for localisation visualization
@@ -50,11 +45,6 @@ class MonitorNode(Node):
         self.create_subscription(Odometry, "/odometry/filtered",  self._on_odom,        qos)
         self.create_subscription(Odometry, "/ground_truth/odom",  self._on_gt_odom,     10)
         self.create_subscription(Bool,     "/system/arm_state",   self._on_arm_state,   qos)
-        # commands
-        self.create_subscription(Int32,   "/cmd/thruster",    self._on_cmd_thruster,    qos)
-        self.create_subscription(Int32,   "/cmd/elevator",    self._on_cmd_elevator,    qos)
-        self.create_subscription(Int32,   "/cmd/rudder",      self._on_cmd_rudder,      qos)
-        self.create_subscription(Float64, "/cmd/moving_mass", self._on_cmd_moving_mass, qos)
 
         self.get_logger().info("MonitorNode ready")
 
@@ -105,18 +95,6 @@ class MonitorNode(Node):
 
     def _on_arm_state(self, msg: Bool) -> None:
         self._pub_f("armed", 1.0 if msg.data else 0.0)
-
-    def _on_cmd_thruster(self, msg: Int32) -> None:
-        self._pub_f("cmd_thruster", float(msg.data))
-
-    def _on_cmd_elevator(self, msg: Int32) -> None:
-        self._pub_f("cmd_elevator", float(msg.data))
-
-    def _on_cmd_rudder(self, msg: Int32) -> None:
-        self._pub_f("cmd_rudder", float(msg.data))
-
-    def _on_cmd_moving_mass(self, msg: Float64) -> None:
-        self._pub_f("cmd_moving_mass", msg.data)
 
     def _pub_f(self, key: str, value: float) -> None:
         msg = Float64()

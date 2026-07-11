@@ -28,6 +28,7 @@ import serial
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Bool, Float64
+from std_srvs.srv import Trigger
 
 # ────────────────────────── VESC protocol layer ──────────────────────────
 # Framing: 0x02, payload_len(1), payload, crc16(2), 0x03   (payloads < 256 B)
@@ -50,6 +51,10 @@ RPM_SCALE     = 1       # eRPM is already integer
 # A GET_VALUES reply is ~55 B (~5 ms on the wire at 115200 baud), so this leaves
 # ample margin for a healthy link while bounding the stall on a dead one.
 SERIAL_READ_TIMEOUT_S = 0.05
+
+# Consecutive over-limit telemetry samples (10 Hz) before the fault latches.
+# Rides out inrush and single noisy reads without blunting a real overspeed.
+LIMIT_TRIP_SAMPLES = 3
 
 FAULT_NAMES = {
     0: 'NONE', 1: 'OVER_VOLTAGE', 2: 'UNDER_VOLTAGE', 3: 'DRV',
@@ -168,9 +173,11 @@ class VescNode(Node):
         fwd = f', CAN forwarding to ID {self._can_fwd_id}' if self._can_fwd_id >= 0 else ''
         self.get_logger().info(f'Connected to {port}{fwd}, waiting for VESC handshake')
 
-        self._operating = False  # no motor commands until the handshake succeeds
-        self._got_cmd   = False
-        self._last_cmd  = self.get_clock().now()
+        self._operating  = False  # no motor commands until the handshake succeeds
+        self._faulted    = False  # latched by _check_limits; blocks all motor commands
+        self._over_limit = 0      # consecutive over-limit samples
+        self._got_cmd    = False
+        self._last_cmd   = self.get_clock().now()
 
         self.create_subscription(Float64, 'vesc/commands/duty_cycle', self._on_duty,    10)
         self.create_subscription(Float64, 'vesc/commands/current',    self._on_current, 10)
@@ -182,6 +189,8 @@ class VescNode(Node):
             for name in ('current_motor', 'current_in', 'rpm', 'duty', 'voltage_in', 'temp_fet')
         }
         self._pub_fault = self.create_publisher(Bool, 'vesc/telemetry/fault', qos)
+
+        self.create_service(Trigger, '~/clear_fault', self._on_clear_fault)
 
         self._init_timer = self.create_timer(0.25, self._handshake)
         self.create_timer(0.1, self._watchdog)
@@ -228,6 +237,11 @@ class VescNode(Node):
         if not self._operating:
             self.get_logger().warn('Dropping command: VESC handshake not complete',
                                    throttle_duration_sec=2.0)
+            return
+        if self._faulted:
+            self.get_logger().warn(
+                f'Dropping command: limit fault latched — call {self.get_name()}/clear_fault',
+                throttle_duration_sec=2.0)
             return
         physical = -value if self._invert else value
         try:
@@ -289,21 +303,48 @@ class VescNode(Node):
     # ── Safety ────────────────────────────────────────────────
 
     def _check_limits(self, values: dict):
-        """Zero the thruster if measured current or RPM exceed the configured
-        maxima (a software backstop behind the VESC's own limits)."""
-        tripped = False
+        """Latch the thruster off if measured current or RPM exceed the configured
+        maxima for LIMIT_TRIP_SAMPLES consecutive reads (a software backstop behind
+        the VESC's own limits). Latching matters: without it an active commander
+        simply overwrites the zero on its next message."""
+        if self._faulted:
+            self._stop()  # keep asserting zero for as long as the fault is latched
+            return
+
+        exceeded = []
         if self._max_current > 0 and abs(values['current_motor']) > self._max_current:
-            self.get_logger().error(
-                f"Current {values['current_motor']:.2f}A exceeds max "
-                f"{self._max_current:.2f}A — zeroing thruster")
-            tripped = True
+            exceeded.append(f"current {values['current_motor']:.2f}A > {self._max_current:.2f}A")
         if self._max_rpm > 0 and abs(values['rpm']) > self._max_rpm:
-            self.get_logger().error(
-                f"RPM {values['rpm']:.0f} exceeds max {self._max_rpm:.0f} — zeroing thruster")
-            tripped = True
-        if tripped:
-            self._stop()
-            self._got_cmd = False
+            exceeded.append(f"rpm {values['rpm']:.0f} > {self._max_rpm:.0f}")
+
+        if not exceeded:
+            self._over_limit = 0
+            return
+
+        self._over_limit += 1
+        reason = ', '.join(exceeded)
+        if self._over_limit < LIMIT_TRIP_SAMPLES:
+            self.get_logger().warn(
+                f'Over limit ({reason}) — {self._over_limit}/{LIMIT_TRIP_SAMPLES}')
+            return
+
+        self._faulted = True
+        self._got_cmd = False
+        self._stop()
+        self.get_logger().error(
+            f'LIMIT TRIP ({reason}) — thruster latched off. '
+            f'Call {self.get_name()}/clear_fault to re-enable.')
+
+    def _on_clear_fault(self, request, response):
+        """Clear a latched limit fault. The thruster stays zeroed until the next command."""
+        self._stop()
+        self._faulted    = False
+        self._over_limit = 0
+        self._got_cmd    = False
+        self.get_logger().warn('Limit fault cleared — thruster re-enabled')
+        response.success = True
+        response.message = 'fault cleared'
+        return response
 
     def _watchdog(self):
         if not self._got_cmd:
@@ -315,8 +356,12 @@ class VescNode(Node):
             self._got_cmd = False
 
     def destroy_node(self):
+        # Never swallow a failure of the final stop — that is the one error worth hearing.
         try:
             self._stop()
+        except Exception as e:
+            self.get_logger().error(f'FINAL STOP FAILED, thruster may still be driven: {e}')
+        try:
             self._ser.close()
         except Exception:
             pass
@@ -334,4 +379,5 @@ def main(args=None):
     finally:
         if node is not None:
             node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():  # rclpy's SIGINT handler may have shut the context down already
+            rclpy.shutdown()
