@@ -14,6 +14,7 @@ install(PROGRAMS
   scripts/circle_test.py
   scripts/box_test.py
   scripts/teleop.py
+  scripts/current_test.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
