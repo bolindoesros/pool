@@ -143,7 +143,17 @@ def generate_launch_description() -> LaunchDescription:
         respawn_delay=2.0,
     )
 
+    foxglove = Node(
+        package="foxglove_bridge",
+        executable="foxglove_bridge",
+        name="foxglove_bridge",
+        output="screen",
+        respawn=True,
+        respawn_delay=2.0,
+    )
+
     return LaunchDescription([
+        foxglove,
         state_publisher,
         imu_node,
         madgwick,
