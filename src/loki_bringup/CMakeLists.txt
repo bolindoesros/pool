@@ -15,6 +15,7 @@ install(PROGRAMS
   scripts/box_test.py
   scripts/teleop.py
   scripts/current_test.py
+  scripts/mag_calibrate.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

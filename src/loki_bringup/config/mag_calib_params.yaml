@@ -1,0 +1,5 @@
+mag_calib_node:
+  ros__parameters:
+    # Hard iron offsets in Tesla — set by running: pixi run mag-cal
+    # Default zero = passthrough (no correction applied)
+    hard_iron: [0.0, 0.0, 0.0]

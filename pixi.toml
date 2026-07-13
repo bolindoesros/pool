@@ -60,6 +60,9 @@ current-test = {cmd = "ros2 run loki_bringup current_test.py", description = "Di
 sim-ps = {cmd = "scripts/sim_ps.sh", description = "List sim.launch.py nodes and whether :10000 is held"}
 sim-kill = {cmd = "scripts/sim_ps.sh --kill", description = "Stop the sim stack (SIGINT launch tree, SIGKILL stragglers, free :10000)"}
 
+mag-calib = {cmd = "ros2 run loki_icm mag_calib_node.py --ros-args --params-file src/loki_bringup/config/mag_calib_params.yaml", description = "Magnetometer calibration node (/imu/mag_raw → hard iron correction → /imu/mag)"}
+mag-cal = {cmd = "ros2 run loki_bringup mag_calibrate.py", description = "Collect mag samples and compute hard iron offsets (spin vehicle 2x 360 yaw, then paste output into mag_calib_params.yaml)"}
+
 vesc-ps = {cmd = "scripts/vesc_ps.sh", description = "List vesc_node processes, their serial ports, and stale handles"}
 vesc-kill = {cmd = "scripts/vesc_ps.sh --kill", description = "Stop all vesc_node processes (SIGINT first, thruster zeroed)"}
 

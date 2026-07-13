@@ -14,7 +14,7 @@ public:
         RCLCPP_INFO(this->get_logger(), "ahrs_orientation_node started!");
 
         imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("/imu/data_raw", 10);
-        mag_pub_ = this->create_publisher<sensor_msgs::msg::MagneticField>("/imu/mag", 10);
+        mag_pub_ = this->create_publisher<sensor_msgs::msg::MagneticField>("/imu/mag_raw", 10);
 
         raw_sensor_sub_ = this->create_subscription<auv_interfaces::msg::EspRawSensor>("esp/raw_sensor", 10,
                                                                     [this](const auv_interfaces::msg::EspRawSensor::SharedPtr msg)
@@ -28,5 +28,10 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::MagneticField>::SharedPtr mag_pub_;
 
     rclcpp::Subscription<auv_interfaces::msg::EspRawSensor>::SharedPtr raw_sensor_sub_;
-    
+
+    // EXPERIMENTAL: gyro bias auto-cal
+    static constexpr int CALIB_SAMPLES = 200;
+    int   calib_samples_ = 0;
+    float gx_sum_ = 0.0f, gy_sum_ = 0.0f, gz_sum_ = 0.0f;
+    float gx_bias_ = 0.0f, gy_bias_ = 0.0f, gz_bias_ = 0.0f;
 };
