@@ -30,10 +30,13 @@ class MagCalibNode(Node):
         self.create_subscription(MagneticField, '/imu/mag_raw', self._on_mag, qos)
 
     def _on_mag(self, msg: MagneticField):
-        msg.magnetic_field.x -= self._ox
-        msg.magnetic_field.y -= self._oy
-        msg.magnetic_field.z -= self._oz
-        self._pub.publish(msg)
+        out = MagneticField()
+        out.header = msg.header
+        out.magnetic_field.x = msg.magnetic_field.x - self._ox
+        out.magnetic_field.y = msg.magnetic_field.y - self._oy
+        out.magnetic_field.z = msg.magnetic_field.z - self._oz
+        out.magnetic_field_covariance = msg.magnetic_field_covariance
+        self._pub.publish(out)
 
 
 def main(args=None):

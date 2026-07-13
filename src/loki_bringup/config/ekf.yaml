@@ -1,8 +1,7 @@
 ekf_filter:
   ros__parameters:
-    # Unity publishes /clock and stamps sensors in sim time, so the EKF must
-    # follow it. real.launch.py overrides this back to false for the vehicle.
-    use_sim_time: true
+    # overridden to true by sim.launch.py for unity. default false for real hardware.
+    use_sim_time: false
     frequency: 50.0
     two_d_mode: false
     map_frame: map

@@ -94,7 +94,6 @@ def main():
 
     rclpy.init()
     rclpy.spin(MagCalibrator(args.duration))
-    rclpy.shutdown()
 
 
 if __name__ == '__main__':
