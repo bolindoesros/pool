@@ -54,7 +54,7 @@ hw = {cmd = "ros2 run loki_actuators hw_bridge", description = "Launch the hardw
 
 servo-test = {cmd = "ros2 run loki_bringup servo_test.py", description = "Sweep fin servos (arm first)"}
 teleop = {cmd = "ros2 run loki_bringup teleop.py", description = "Keyboard remote control for thrusters and fin servos (press 'a' to arm)"}
-current-test = {cmd = "ros2 run loki_bringup current_test.py", description = "Direct current command to VESCs up to 25A"}
+current = {cmd = "ros2 run loki_bringup current_test.py", description = "Direct current command to VESCs up to 25A"}
 
 
 sim-ps = {cmd = "scripts/sim_ps.sh", description = "List sim.launch.py nodes and whether :10000 is held"}
