@@ -19,4 +19,18 @@ ros2 bag record -o "$BAG_NAME" \
   /odometry/filtered \
   /tf \
   /tf_static \
-  /diagnostics
+  /diagnostics \
+  /system/arm_state.data \
+  /pc_to_esp_cmd \
+  /monitor/target/depth.data \
+  /monitor/depth.data \
+  /monitor/target/heading.data \
+  /monitor/heading_deg.data \
+  /monitor/target/speed.data \
+  /monitor/speed.data \
+  /pc_to_esp_cmd \
+  /vesc1/vesc/telemetry/current_in.data \
+  /vesc1/vesc/telemetry/voltage_in.data \
+  /vesc1/vesc/telemetry/rpm.data \
+  /vesc1/vesc/telemetry/duty.data \
+  /vesc1/vesc/telemetry/fault.data
